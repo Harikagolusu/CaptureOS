@@ -1,6 +1,6 @@
 # laptop/: CaptureOS bridge (senior brain)
 
-Recorded meeting audio → transcript (GPT-4o transcribe) → Claude agent → Notion tasks + note.
+Recorded meeting audio → transcript (Sarvam, speaker-labelled; OpenAI optional) → Claude agent → Notion tasks + note.
 
 ## Run
 ```bash
@@ -16,9 +16,9 @@ Without Notion keys the server runs in **dry-run**: Claude still decides, and ac
 | Method | Path | Body | Returns |
 |---|---|---|---|
 | GET | `/health` | none | ip, models, dry-run flag |
-| POST | `/transcribe` | multipart `audio`, optional `language` (`te`/`hi`/`en`) | `{transcript}` |
+| POST | `/transcribe` | multipart `audio` (≤ 30 s voice note), optional `language` (`te`/`hi`/`en`) | `{transcript}` |
 | POST | `/process` | JSON `{transcript, title?}` | `{summary, actions[], dry_run, id}` |
-| POST | `/meeting` | multipart `audio`, `language?`, `title?` | transcript + process result |
+| POST | `/meeting` | multipart `audio`, `language?`, `title?`, `speakers?` | speaker-labelled transcript + process result |
 
 ## Test
 ```bash

@@ -12,10 +12,13 @@ if _env.exists():
         line = line.strip()
         if line and not line.startswith("#") and "=" in line:
             k, v = line.split("=", 1)
-            os.environ.setdefault(k.strip(), v.strip())
+            os.environ.setdefault(k.strip(), v.split(" #", 1)[0].strip())
 
 CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "claude-opus-5")
+TRANSCRIBE_PROVIDER = os.environ.get("TRANSCRIBE_PROVIDER", "sarvam")
 TRANSCRIBE_MODEL = os.environ.get("TRANSCRIBE_MODEL", "gpt-4o-transcribe")
+SARVAM_MODEL = os.environ.get("SARVAM_MODEL", "saaras:v3")
+SARVAM_MODE = os.environ.get("SARVAM_MODE", "transcribe")
 NOTION_TOKEN = os.environ.get("NOTION_TOKEN", "")
 NOTION_TASKS_DB = os.environ.get("NOTION_TASKS_DB", "")
 NOTION_NOTES_PAGE = os.environ.get("NOTION_NOTES_PAGE", "")

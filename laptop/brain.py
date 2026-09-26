@@ -12,6 +12,7 @@ client = anthropic.Anthropic()
 
 SYSTEM = """You are the operations brain of CaptureOS. You receive a transcript of a meeting or a \
 field visit (possibly Telugu, Hindi, English, or a mix) and turn it into real work items.
+Lines may be labelled "Speaker 0", "Speaker 1"...; those labels are anonymous, so work out who \nis who from names people use when addressing each other, and use real names as owners.
 
 Use the tools to:
 - create_task for every concrete action item (who does what, by when). Resolve relative dates \

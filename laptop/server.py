@@ -10,7 +10,7 @@ from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
 from brain import run_brain
-from config import CLAUDE_MODEL, DATA, DRY_RUN, TRANSCRIBE_MODEL
+from config import CLAUDE_MODEL, DATA, DRY_RUN, TRANSCRIBE_PROVIDER
 from transcribe import transcribe
 
 app = FastAPI(title="CaptureOS Bridge")
@@ -33,13 +33,13 @@ def save(kind: str, payload: dict) -> str:
     return run_id
 
 
-async def transcribe_upload(audio: UploadFile, language: str | None) -> str:
+async def transcribe_upload(audio: UploadFile, language: str | None, meeting: bool = False, speakers: int | None = None) -> str:
     suffix = Path(audio.filename or "audio.m4a").suffix or ".m4a"
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
         tmp.write(await audio.read())
         path = Path(tmp.name)
     try:
-        return await run_in_threadpool(transcribe, path, language or None)
+        return await run_in_threadpool(transcribe, path, language or None, meeting, speakers)
     except Exception as e:
         raise HTTPException(502, f"Transcription failed: {e}")
     finally:
@@ -53,7 +53,7 @@ class ProcessRequest(BaseModel):
 
 @app.get("/health")
 def health():
-    return {"ok": True, "ip": lan_ip(), "claude": CLAUDE_MODEL, "transcribe": TRANSCRIBE_MODEL, "notion_dry_run": DRY_RUN}
+    return {"ok": True, "ip": lan_ip(), "claude": CLAUDE_MODEL, "transcribe": TRANSCRIBE_PROVIDER, "notion_dry_run": DRY_RUN}
 
 
 @app.post("/transcribe")
@@ -70,9 +70,11 @@ async def process(req: ProcessRequest):
 
 
 @app.post("/meeting")
-async def meeting(audio: UploadFile = File(...), language: str = Form(""), title: str = Form("")):
+async def meeting(
+    audio: UploadFile = File(...), language: str = Form(""), title: str = Form(""), speakers: int | None = Form(None)
+):
     """Full pipeline in one call: recorded meeting audio in, transcript + actions out."""
-    text = await transcribe_upload(audio, language)
+    text = await transcribe_upload(audio, language, meeting=True, speakers=speakers)
     result = await run_in_threadpool(run_brain, text, title or None)
     result["transcript"] = text
     result["id"] = save("meeting", result)
