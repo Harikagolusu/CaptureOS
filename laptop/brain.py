@@ -1,14 +1,21 @@
 """The senior: Claude reads a meeting transcript, decides what needs doing, and acts through tools."""
 import json
+import os
 from datetime import date
 
 import anthropic
 from anthropic import beta_tool
 
 import notion
-from config import CLAUDE_MODEL, DRY_RUN, TEAM_ROSTER
+from config import CLAUDE_MODEL, DRY_RUN, TEAM_ROSTER, USE_OPENROUTER
 
-client = anthropic.Anthropic()
+if USE_OPENROUTER:
+    client = anthropic.Anthropic(base_url="https://openrouter.ai/api", auth_token=os.environ["OPENROUTER_API_KEY"])
+    # Server-side refusal fallbacks are a first-party Anthropic API feature.
+    EXTRA = {}
+else:
+    client = anthropic.Anthropic()
+    EXTRA = {"betas": ["server-side-fallback-2026-07-01"], "fallbacks": "default"}
 
 SYSTEM = """You are the operations brain of CaptureOS. You receive a transcript of a meeting or a \
 field visit (possibly Telugu, Hindi, English, or a mix) and turn it into real work items.
@@ -87,8 +94,7 @@ def run_brain(transcript: str, title: str | None = None, source: str = "cloud") 
         system=SYSTEM,
         tools=[create_task, create_note, ask_user],
         messages=[{"role": "user", "content": f"{context}\n\n<transcript>\n{transcript}\n</transcript>"}],
-        betas=["server-side-fallback-2026-07-01"],
-        fallbacks="default",
+        **EXTRA,
     )
     final = None
     for message in runner:

@@ -12,9 +12,13 @@ if _env.exists():
         line = line.strip()
         if line and not line.startswith("#") and "=" in line:
             k, v = line.split("=", 1)
-            os.environ.setdefault(k.strip(), v.split(" #", 1)[0].strip())
+            v = v.split(" #", 1)[0].strip()
+            if v:  # empty values would shadow real env vars / confuse SDK credential lookup
+                os.environ.setdefault(k.strip(), v)
 
-CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "claude-opus-5")
+# Claude access: direct Anthropic key preferred; otherwise OpenRouter's Anthropic-compatible endpoint.
+USE_OPENROUTER = not os.environ.get("ANTHROPIC_API_KEY") and bool(os.environ.get("OPENROUTER_API_KEY"))
+CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "anthropic/claude-opus-5" if USE_OPENROUTER else "claude-opus-5")
 TRANSCRIBE_PROVIDER = os.environ.get("TRANSCRIBE_PROVIDER", "sarvam")
 TRANSCRIBE_MODEL = os.environ.get("TRANSCRIBE_MODEL", "gpt-4o-transcribe")
 SARVAM_MODEL = os.environ.get("SARVAM_MODEL", "saaras:v3")
