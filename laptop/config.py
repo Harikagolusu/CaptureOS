@@ -19,7 +19,8 @@ if _env.exists():
 # Claude access: direct Anthropic key preferred; otherwise OpenRouter's Anthropic-compatible endpoint.
 USE_OPENROUTER = not os.environ.get("ANTHROPIC_API_KEY") and bool(os.environ.get("OPENROUTER_API_KEY"))
 CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "anthropic/claude-opus-5" if USE_OPENROUTER else "claude-opus-5")
-TRANSCRIBE_PROVIDER = os.environ.get("TRANSCRIBE_PROVIDER", "sarvam")
+TRANSCRIBE_PROVIDER = os.environ.get("TRANSCRIBE_PROVIDER", "openrouter")
+OPENROUTER_STT_MODEL = os.environ.get("OPENROUTER_STT_MODEL", "google/gemini-3.8-flash")
 TRANSCRIBE_MODEL = os.environ.get("TRANSCRIBE_MODEL", "gpt-4o-transcribe")
 SARVAM_MODEL = os.environ.get("SARVAM_MODEL", "saaras:v3")
 SARVAM_MODE = os.environ.get("SARVAM_MODE", "transcribe")
