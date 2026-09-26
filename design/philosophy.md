@@ -1,0 +1,11 @@
+# Signal Cartography
+
+A movement that treats information as terrain: something surveyed, measured, and plotted rather than explained. Every composition is a field survey of an invisible landscape. Captured moments become coordinates, and the hours of a day become a meridian that cuts the sheet. The work looks like the instrument sheet of a discipline that doesn't exist yet: precise, quiet, inevitable. It should feel meticulously crafted, the product of deep expertise and countless patient hours at the drafting table.
+
+Space is organised by one dominant division, a hard meridian that splits the plane into before and after. Everything else follows from that cut. Lanes run parallel like survey transects. Nodes sit on them like benchmark stones. Negative space isn't empty; it's unsurveyed ground, and it gets as much deliberate attention as the marks. The margins are generous and absolute. Nothing touches an edge, and nothing collides. Every alignment is the result of painstaking refinement.
+
+Colour is almost absent, so it can mean something when it appears. A deep ink ground, bone-white linework, and a single signal colour, a hot vermilion, reserved for the moment of change and the path that matters. A second, cooler tone marks what is done quietly and offline. Colour is never decoration. It's a reading of the instrument, calibrated with the care of a master printer.
+
+Rhythm comes from repetition: tick marks, dotted grids, hairline rules, and small numbered registration markers that accumulate into texture. Density rewards close looking. From afar the composition reads as one bold gesture; up close it reveals hundreds of small, deliberate marks, each placed by hand-level precision. Scale contrast is extreme: one monumental numeral or word, and everything else whispered in thin mono labels.
+
+Typography is part of the instrument. A thin monospaced face labels coordinates and lanes like annotations on a chart. One condensed display face carries the single loud moment. Text is sparse and clinical: labels, never paragraphs. The finished sheet should look like it came from someone at the absolute top of their field, a master-level execution where every hairline, every gap, and every glyph was weighed and then weighed again.

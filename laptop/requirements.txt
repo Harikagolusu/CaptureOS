@@ -1,0 +1,6 @@
+anthropic>=1.8
+openai>=3.19
+fastapi
+uvicorn
+python-multipart
+httpx

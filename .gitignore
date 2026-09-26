@@ -34,3 +34,6 @@ Thumbs.db
 *.wav
 *.m4a
 queue_data/
+
+# Laptop run outputs
+laptop/data/

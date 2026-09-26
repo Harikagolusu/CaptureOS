@@ -1,0 +1,86 @@
+"""CaptureOS laptop bridge: audio -> transcript -> Claude brain -> Notion."""
+import json
+import socket
+import tempfile
+from datetime import datetime
+from pathlib import Path
+
+from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi.concurrency import run_in_threadpool
+from pydantic import BaseModel
+
+from brain import run_brain
+from config import CLAUDE_MODEL, DATA, DRY_RUN, TRANSCRIBE_MODEL
+from transcribe import transcribe
+
+app = FastAPI(title="CaptureOS Bridge")
+
+
+def lan_ip() -> str:
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        s.connect(("10.255.255.255", 1))
+        return s.getsockname()[0]
+    except OSError:
+        return "127.0.0.1"
+    finally:
+        s.close()
+
+
+def save(kind: str, payload: dict) -> str:
+    run_id = datetime.now().strftime("%Y%m%d-%H%M%S")
+    (DATA / f"{kind}-{run_id}.json").write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    return run_id
+
+
+async def transcribe_upload(audio: UploadFile, language: str | None) -> str:
+    suffix = Path(audio.filename or "audio.m4a").suffix or ".m4a"
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+        tmp.write(await audio.read())
+        path = Path(tmp.name)
+    try:
+        return await run_in_threadpool(transcribe, path, language or None)
+    except Exception as e:
+        raise HTTPException(502, f"Transcription failed: {e}")
+    finally:
+        path.unlink(missing_ok=True)
+
+
+class ProcessRequest(BaseModel):
+    transcript: str
+    title: str | None = None
+
+
+@app.get("/health")
+def health():
+    return {"ok": True, "ip": lan_ip(), "claude": CLAUDE_MODEL, "transcribe": TRANSCRIBE_MODEL, "notion_dry_run": DRY_RUN}
+
+
+@app.post("/transcribe")
+async def transcribe_endpoint(audio: UploadFile = File(...), language: str = Form("")):
+    text = await transcribe_upload(audio, language)
+    return {"transcript": text}
+
+
+@app.post("/process")
+async def process(req: ProcessRequest):
+    result = await run_in_threadpool(run_brain, req.transcript, req.title)
+    result["id"] = save("process", {"request": req.model_dump(), "result": result})
+    return result
+
+
+@app.post("/meeting")
+async def meeting(audio: UploadFile = File(...), language: str = Form(""), title: str = Form("")):
+    """Full pipeline in one call: recorded meeting audio in, transcript + actions out."""
+    text = await transcribe_upload(audio, language)
+    result = await run_in_threadpool(run_brain, text, title or None)
+    result["transcript"] = text
+    result["id"] = save("meeting", result)
+    return result
+
+
+if __name__ == "__main__":
+    import uvicorn
+
+    print(f"\n  CaptureOS bridge -> http://{lan_ip()}:8000  (phone uses this IP)\n")
+    uvicorn.run(app, host="0.0.0.0", port=8000)
