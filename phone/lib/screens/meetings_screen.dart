@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
@@ -19,10 +21,24 @@ class MeetingsScreen extends StatefulWidget {
 class _MeetingsScreenState extends State<MeetingsScreen> {
   final api = ApiClient.instance;
   late Future<List<MeetingSummary>> _future = _load();
+  Timer? _poll;
+
+  @override
+  void dispose() {
+    _poll?.cancel();
+    super.dispose();
+  }
 
   Future<List<MeetingSummary>> _load() async {
     final rows = await api.get('/meetings') as List;
-    return rows.map((e) => MeetingSummary.fromJson(Map<String, dynamic>.from(e as Map))).toList();
+    final list = rows.map((e) => MeetingSummary.fromJson(Map<String, dynamic>.from(e as Map))).toList();
+    _poll?.cancel();
+    if (list.any((m) => m.processing)) {
+      _poll = Timer(const Duration(seconds: 4), () {
+        if (mounted) setState(() => _future = _load());
+      });
+    }
+    return list;
   }
 
   Future<void> _refresh() async {

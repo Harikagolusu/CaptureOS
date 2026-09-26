@@ -52,6 +52,15 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
     }
   }
 
+  Future<void> _retry() async {
+    try {
+      await api.send('POST', '/meetings/${widget.meetingId}/retry');
+    } on ApiException catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
+    }
+    _load();
+  }
+
   int? get _myId => api.user?['id'] as int?;
 
   String _notesText(MeetingDetail m) {
@@ -122,7 +131,7 @@ class _MeetingDetailScreenState extends State<MeetingDetailScreen> {
         if (_error != null && m == null) return ErrorState(message: _error.toString(), onRetry: _load);
         if (m == null) return const LoadingState();
         if (m.processing) return _Processing(status: m.status);
-        if (m.status == 'error') return ErrorState(message: 'Processing failed: ${m.error}', onRetry: _load);
+        if (m.status == 'error') return ErrorState(message: 'Processing failed: ${m.error}', onRetry: _retry);
         return _body(context, m);
       }(),
     );

@@ -18,10 +18,11 @@ class TasksScreen extends StatefulWidget {
 class _TasksScreenState extends State<TasksScreen> {
   final api = ApiClient.instance;
   String _filter = 'open';
+  bool _team = false;
   late Future<List<TaskItem>> _future = _load();
 
   Future<List<TaskItem>> _load() async {
-    final rows = await api.get('/me/tasks') as List;
+    final rows = await api.get(_team ? '/tasks' : '/me/tasks') as List;
     return rows.map((e) => TaskItem.fromJson(Map<String, dynamic>.from(e as Map))).toList();
   }
 
@@ -70,6 +71,20 @@ class _TasksScreenState extends State<TasksScreen> {
             child: ListView(
               padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
               children: [
+                if (api.isAdmin) ...[
+                  SegmentedButton<bool>(
+                    segments: const [
+                      ButtonSegment(value: false, label: Text('Mine'), icon: Icon(Icons.person_outline)),
+                      ButtonSegment(value: true, label: Text('Team'), icon: Icon(Icons.groups_outlined)),
+                    ],
+                    selected: {_team},
+                    onSelectionChanged: (v) => setState(() {
+                      _team = v.first;
+                      _future = _load();
+                    }),
+                  ),
+                  const SizedBox(height: 8),
+                ],
                 Wrap(spacing: 8, children: [
                   for (final f in const ['open', 'done', 'all'])
                     ChoiceChip(
@@ -88,7 +103,7 @@ class _TasksScreenState extends State<TasksScreen> {
                       subtitle: 'Tasks appear after a meeting, a photo of a board, or a voice memo.',
                     ),
                   ),
-                for (final t in shown) _TaskTile(task: t, onStatus: (s) => _setStatus(t, s)),
+                for (final t in shown) _TaskTile(task: t, showOwner: _team, onStatus: (s) => _setStatus(t, s)),
               ],
             ),
           );
@@ -99,10 +114,11 @@ class _TasksScreenState extends State<TasksScreen> {
 }
 
 class _TaskTile extends StatelessWidget {
-  const _TaskTile({required this.task, required this.onStatus});
+  const _TaskTile({required this.task, required this.onStatus, this.showOwner = false});
 
   final TaskItem task;
   final ValueChanged<String> onStatus;
+  final bool showOwner;
 
   @override
   Widget build(BuildContext context) {
@@ -118,6 +134,7 @@ class _TaskTile extends StatelessWidget {
         title: Text(task.title,
             style: task.done ? const TextStyle(decoration: TextDecoration.lineThrough) : null),
         subtitle: Row(children: [
+          if (showOwner) ...[Text(task.owner), const SizedBox(width: 12)],
           Icon(Icons.flag, size: 14, color: color),
           const SizedBox(width: 4),
           Text(task.priority),

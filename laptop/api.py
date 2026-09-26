@@ -102,7 +102,18 @@ def join(body: Join):
         s.add(user)
         s.commit()
         s.refresh(user)
+        _claim_tasks(s, user)
         return {"team": {"id": team.id, "name": team.name}, "user": _user_out(user, with_token=True)}
+
+
+def _claim_tasks(s, user: User) -> None:
+    """Tasks created for this person's name before they had an account become theirs."""
+    names = {n.lower() for n in user.names()}
+    for t in s.exec(select(Task).where(Task.team_id == user.team_id, Task.owner_user_id == None)):  # noqa: E711
+        if t.owner_name.strip().lower() in names:
+            t.owner_user_id = user.id
+            s.add(t)
+    s.commit()
 
 
 @router.get("/me")
@@ -144,6 +155,7 @@ def add_member(body: AddMember, admin: User = Depends(admin_user)):
         s.add(u)
         s.commit()
         s.refresh(u)
+        _claim_tasks(s, u)
         return _user_out(u)
 
 
@@ -214,6 +226,30 @@ def get_meeting(meeting_id: int, user: User = Depends(current_user)):
 
 
 # ---------- my view ----------
+
+@router.get("/tasks")
+def team_tasks(status: str = "", admin: User = Depends(admin_user)):
+    """Every task in the team, including ones for people who haven't joined yet (admins only)."""
+    with session() as s:
+        q = select(Task).where(Task.team_id == admin.team_id)
+        if status:
+            q = q.where(Task.status == status)
+        return [_task_out(t) for t in s.exec(q.order_by(Task.created_at.desc()))]
+
+
+@router.post("/meetings/{meeting_id}/retry")
+def retry_meeting(meeting_id: int, background: BackgroundTasks, user: User = Depends(current_user)):
+    """Run a failed meeting through the pipeline again (same recording)."""
+    with session() as s:
+        m = _meeting(s, meeting_id, user)
+        if m.status != "error":
+            raise HTTPException(409, "Only failed meetings can be retried")
+        m.status, m.error, m.transcript = "uploaded", "", ""
+        s.add(m)
+        s.commit()
+    background.add_task(process_meeting, meeting_id)
+    return {"id": meeting_id, "status": "uploaded"}
+
 
 @router.get("/me/tasks")
 def my_tasks(status: str = "", user: User = Depends(current_user)):

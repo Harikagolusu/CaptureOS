@@ -27,7 +27,7 @@ class _MainShellState extends State<MainShell> {
       TeamScreen(onLogout: widget.onLogout),
     ];
     return Scaffold(
-      body: IndexedStack(index: _tab, children: pages),
+      body: pages[_tab], // rebuilt on every tab switch so each tab loads fresh data
       bottomNavigationBar: NavigationBar(
         selectedIndex: _tab,
         onDestinationSelected: (i) => setState(() => _tab = i),
