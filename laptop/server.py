@@ -73,11 +73,15 @@ async def process(req: ProcessRequest):
 
 @app.post("/meeting")
 async def meeting(
-    audio: UploadFile = File(...), language: str = Form(""), title: str = Form(""), speakers: int | None = Form(None)
+    audio: UploadFile = File(...),
+    language: str = Form(""),
+    title: str = Form(""),
+    speakers: int | None = Form(None),
+    who: str = Form(""),
 ):
     """Full pipeline in one call: recorded meeting audio in, transcript + actions out."""
     text = await transcribe_upload(audio, language, meeting=True, speakers=speakers)
-    result = await run_in_threadpool(run_brain, text, title or None)
+    result = await run_in_threadpool(run_brain, text, title or None, "cloud", who or None)
     result["transcript"] = text
     result["id"] = save("meeting", result)
     return result

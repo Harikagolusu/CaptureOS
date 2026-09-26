@@ -2,6 +2,7 @@
 
     .venv/Scripts/python try_meeting.py                 # newest recording/video (Sound Recordings, Camera Roll)
     .venv/Scripts/python try_meeting.py path/to/a.m4a [te|hi|en]   # audio or video file
+    add --who="Tej" (or "Speaker 1 is Tej, Speaker 2 is Ravi") to tell Claude who is talking
 """
 import sys
 import time
@@ -29,8 +30,10 @@ def newest_media() -> Path:
 
 def main() -> None:
     sys.stdout.reconfigure(encoding="utf-8")
-    path = Path(sys.argv[1]) if len(sys.argv) > 1 else newest_media()
-    language = sys.argv[2] if len(sys.argv) > 2 else None
+    who = next((a.split("=", 1)[1] for a in sys.argv[1:] if a.startswith("--who=")), None)
+    args = [a for a in sys.argv[1:] if not a.startswith("--who=")]
+    path = Path(args[0]) if args else newest_media()
+    language = args[1] if len(args) > 1 else None
     print(f"Audio: {path.name}\n")
 
     t = time.time()
@@ -38,7 +41,7 @@ def main() -> None:
     print(f"--- Transcript ({time.time() - t:.1f}s)\n{text}\n")
 
     t = time.time()
-    result = run_brain(text, title=path.stem)
+    result = run_brain(text, title=path.stem, speakers_hint=who)
     print(f"--- Claude ({time.time() - t:.1f}s): {result['summary']}\n")
     for a in result["actions"]:
         args = a["args"]

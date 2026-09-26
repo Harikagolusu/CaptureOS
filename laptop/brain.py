@@ -20,7 +20,8 @@ else:
 
 SYSTEM = """You are the operations brain of CaptureOS. You receive a transcript of a meeting or a \
 field visit (possibly Telugu, Hindi, English, or a mix) and turn it into real work items.
-Lines may be labelled "Speaker 0", "Speaker 1"...; those labels are anonymous, so work out who \nis who from names people use when addressing each other, and use real names as owners.
+Lines may be labelled "Speaker 0", "Speaker 1"...; those labels are anonymous, so work out who \
+is who from names people use when addressing each other, and use real names as owners.
 
 Use the tools to:
 - create_task for every concrete action item (who does what, by when). Resolve relative dates \
@@ -33,7 +34,9 @@ Write all task titles, summaries and decisions in English. Don't invent tasks, o
 that the transcript doesn't support. When done, reply with one sentence describing what you did."""
 
 
-def run_brain(transcript: str, title: str | None = None, source: str = "cloud") -> dict:
+def run_brain(
+    transcript: str, title: str | None = None, source: str = "cloud", speakers_hint: str | None = None
+) -> dict:
     actions: list[dict] = []
 
     def record(tool: str, args: dict, run) -> str:
@@ -87,6 +90,8 @@ def run_brain(transcript: str, title: str | None = None, source: str = "cloud") 
         context += f"\nTeam roster (valid owners): {', '.join(TEAM_ROSTER)}"
     if title:
         context += f"\nMeeting title hint: {title}"
+    if speakers_hint:
+        context += f"\nWho is speaking (from the user): {speakers_hint}"
 
     runner = client.beta.messages.tool_runner(
         model=CLAUDE_MODEL,
