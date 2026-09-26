@@ -1,6 +1,8 @@
 import 'dart:async';
 
-// Frontend-only mock voice service. No real mic access this phase.
+import 'package:path_provider/path_provider.dart';
+import 'package:record/record.dart';
+
 abstract class VoiceService {
   bool get isRecording;
   Stream<Duration> get durationStream;
@@ -12,26 +14,37 @@ abstract class VoiceService {
   Future<void> dispose();
 }
 
+/// Real microphone recording (record package), AAC in .m4a. Pass '' as path for a temp file.
 class VoiceServiceImpl implements VoiceService {
-  bool _rec = false;
-  String? _err;
+  final _rec = AudioRecorder();
   final _ctrl = StreamController<Duration>.broadcast();
+  bool _recording = false;
+  String? _err;
   Timer? _t;
   Duration _d = Duration.zero;
 
   @override
-  bool get isRecording => _rec;
+  bool get isRecording => _recording;
   @override
   Stream<Duration> get durationStream => _ctrl.stream;
   @override
   String? get lastError => _err;
 
   @override
-  Future<bool> hasPermission() async => true;
+  Future<bool> hasPermission() => _rec.hasPermission();
 
   @override
   Future<bool> startRecording(String path) async {
-    _rec = true;
+    if (!await _rec.hasPermission()) {
+      _err = 'Microphone permission denied';
+      return false;
+    }
+    final target = path.isNotEmpty
+        ? path
+        : '${(await getTemporaryDirectory()).path}/rec_${DateTime.now().millisecondsSinceEpoch}.m4a';
+    await _rec.start(const RecordConfig(encoder: AudioEncoder.aacLc, sampleRate: 16000, numChannels: 1), path: target);
+    _recording = true;
+    _err = null;
     _d = Duration.zero;
     _t?.cancel();
     _t = Timer.periodic(const Duration(seconds: 1), (_) {
@@ -44,19 +57,21 @@ class VoiceServiceImpl implements VoiceService {
   @override
   Future<String?> stopRecording() async {
     _t?.cancel();
-    _rec = false;
-    return '/mock/voice_${DateTime.now().millisecondsSinceEpoch}.wav';
+    _recording = false;
+    return _rec.stop();
   }
 
   @override
   Future<void> cancel() async {
     _t?.cancel();
-    _rec = false;
+    _recording = false;
+    await _rec.cancel();
   }
 
   @override
   Future<void> dispose() async {
     _t?.cancel();
+    await _rec.dispose();
     await _ctrl.close();
   }
 }

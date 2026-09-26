@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import '../models/observation.dart';
 import '../services/camera_service.dart';
@@ -5,15 +7,28 @@ import '../services/voice_service.dart';
 import 'observation_details_screen.dart';
 import 'review_screen.dart';
 
+/// What the capture screen hands back in [CaptureScreen.returnResult] mode.
+class CaptureResult {
+  const CaptureResult({this.photoPath, this.audioPath});
+  final String? photoPath;
+  final String? audioPath;
+}
+
 class CaptureScreen extends StatefulWidget {
   const CaptureScreen({
     super.key,
     this.cameraService,
     this.voiceService,
+    this.returnResult = false,
+    this.title = 'Field Capture',
   });
 
   final CameraService? cameraService;
   final VoiceService? voiceService;
+
+  /// When true, "Continue" pops with a [CaptureResult] instead of opening the local review flow.
+  final bool returnResult;
+  final String title;
 
   @override
   State<CaptureScreen> createState() => _CaptureScreenState();
@@ -77,7 +92,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
       });
       return;
     }
-    final ok = await _voice.startRecording('/mock/voice.wav');
+    final ok = await _voice.startRecording('');
     if (!ok && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(_voice.lastError ?? 'Recording failed')),
@@ -97,6 +112,10 @@ class _CaptureScreenState extends State<CaptureScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Capture a photo or voice note to continue.')),
       );
+      return;
+    }
+    if (widget.returnResult) {
+      Navigator.of(context).pop(CaptureResult(photoPath: _photoPath, audioPath: _audioPath));
       return;
     }
     var draft = ObservationDraft(
@@ -131,7 +150,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
     final scheme = Theme.of(context).colorScheme;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Field Capture'),
+        title: Text(widget.title),
         leading: IconButton(
           icon: const Icon(Icons.close),
           onPressed: () => Navigator.of(context).pop(),
@@ -230,7 +249,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
                             style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
                           ),
                           Text(
-                            _audioPath != null ? 'mock_voice.wav' : 'On-device only, no cloud',
+                            _audioPath != null ? _audioPath!.split('/').last : 'Short note, any language',
                             style: Theme.of(context).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
                           ),
                         ],
@@ -282,7 +301,7 @@ class _CaptureScreenState extends State<CaptureScreen> {
                 child: ElevatedButton.icon(
                   onPressed: _continueToReview,
                   icon: const Icon(Icons.arrow_forward),
-                  label: const Text('Continue to review'),
+                  label: Text(widget.returnResult ? 'Add to visit' : 'Continue to review'),
                 ),
               ),
             ],
@@ -298,16 +317,19 @@ class _CaptureScreenState extends State<CaptureScreen> {
         borderRadius: BorderRadius.circular(14),
         child: AspectRatio(
           aspectRatio: 4 / 3,
-          child: Container(
-            color: scheme.primaryContainer,
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.check_circle, size: 48, color: scheme.primary),
-                const SizedBox(height: 8),
-                Text('Mock photo captured', style: TextStyle(color: scheme.onPrimaryContainer, fontWeight: FontWeight.w600)),
-                Text('mock_photo.jpg', style: TextStyle(color: scheme.onPrimaryContainer, fontSize: 12)),
-              ],
+          child: Image.file(
+            File(_photoPath!),
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => Container(
+              color: scheme.primaryContainer,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.check_circle, size: 48, color: scheme.primary),
+                  const SizedBox(height: 8),
+                  Text('Photo captured', style: TextStyle(color: scheme.onPrimaryContainer, fontWeight: FontWeight.w600)),
+                ],
+              ),
             ),
           ),
         ),
@@ -349,9 +371,9 @@ class _CaptureScreenState extends State<CaptureScreen> {
             children: [
               Icon(Icons.camera_alt_outlined, size: 48, color: scheme.outline),
               const SizedBox(height: 8),
-              Text('Camera Preview Placeholder',
+              Text('Ready',
                   style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: scheme.onSurfaceVariant)),
-              Text('Tap Capture photo to simulate capture',
+              Text('Tap Capture photo to open the camera',
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(color: scheme.outline, fontSize: 11)),
             ],
           ),

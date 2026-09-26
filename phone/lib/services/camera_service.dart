@@ -1,5 +1,5 @@
-// Frontend-only mock — no real camera access in this phase.
-// Interface preserved for later hardware integration.
+import 'package:image_picker/image_picker.dart';
+
 abstract class CameraService {
   bool get isInitialized;
   String? get lastError;
@@ -8,18 +8,28 @@ abstract class CameraService {
   Future<void> dispose();
 }
 
-/// Mock implementation returns fake paths, simulates permission failures.
+/// Real camera through the system camera app (image_picker).
 class CameraServiceImpl implements CameraService {
-  // ignore: prefer_final_fields
-  bool _init = true;
+  final _picker = ImagePicker();
+  String? _error;
   @override
-  bool get isInitialized => _init;
+  bool get isInitialized => true;
   @override
-  String? get lastError => null;
+  String? get lastError => _error;
   @override
   Future<bool> initialize() async => true;
   @override
-  Future<String?> capturePhoto() async => '/mock/photo_${DateTime.now().millisecondsSinceEpoch}.jpg';
+  Future<String?> capturePhoto() async {
+    try {
+      final shot = await _picker.pickImage(source: ImageSource.camera, maxWidth: 2048, imageQuality: 85);
+      _error = shot == null ? 'No photo taken' : null;
+      return shot?.path;
+    } catch (e) {
+      _error = 'Camera error: $e';
+      return null;
+    }
+  }
+
   @override
   Future<void> dispose() async {}
 }
