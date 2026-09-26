@@ -9,6 +9,7 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
+import notion
 import vivo_notes
 from brain import run_brain
 from config import CLAUDE_MODEL, DATA, DRY_RUN, TRANSCRIBE_PROVIDER
@@ -40,7 +41,8 @@ async def transcribe_upload(audio: UploadFile, language: str | None, meeting: bo
         tmp.write(await audio.read())
         path = Path(tmp.name)
     try:
-        return await run_in_threadpool(transcribe, path, language or None, meeting, speakers)
+        names = [] if DRY_RUN else await run_in_threadpool(notion.known_people)
+        return await run_in_threadpool(transcribe, path, language or None, meeting, speakers, names)
     except Exception as e:
         raise HTTPException(502, f"Transcription failed: {e}")
     finally:

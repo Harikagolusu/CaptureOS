@@ -22,6 +22,23 @@ def _post(path: str, body: dict) -> dict:
     return r.json()
 
 
+def known_people(limit: int = 100) -> list[str]:
+    """Distinct task owners already in the tasks DB, most recent first. Never raises."""
+    try:
+        data = _post(
+            f"/databases/{NOTION_TASKS_DB}/query",
+            {"page_size": limit, "sorts": [{"timestamp": "created_time", "direction": "descending"}]},
+        )
+    except Exception:
+        return []
+    seen: dict[str, None] = {}
+    for page in data.get("results", []):
+        owner = "".join(t["plain_text"] for t in page["properties"].get("Owner", {}).get("rich_text", [])).strip()
+        if owner and owner.lower() != "unassigned":
+            seen.setdefault(owner)
+    return list(seen)
+
+
 def create_task(title: str, owner: str, due: str | None, priority: str, source: str) -> str:
     props = {
         "Name": {"title": _text(title)},

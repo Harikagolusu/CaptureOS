@@ -8,7 +8,9 @@ import sys
 import time
 from pathlib import Path
 
+import notion
 from brain import run_brain
+from config import DRY_RUN
 from transcribe import VIDEO, transcribe
 
 MEDIA = {".m4a", ".mp3", ".wav", ".aac", ".ogg", ".flac"} | VIDEO
@@ -37,7 +39,8 @@ def main() -> None:
     print(f"Audio: {path.name}\n")
 
     t = time.time()
-    text = transcribe(path, language, meeting=True)
+    names = [] if DRY_RUN else notion.known_people()
+    text = transcribe(path, language, meeting=True, names=names)
     print(f"--- Transcript ({time.time() - t:.1f}s)\n{text}\n")
 
     t = time.time()

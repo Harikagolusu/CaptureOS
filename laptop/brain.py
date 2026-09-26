@@ -8,7 +8,7 @@ from anthropic import beta_tool
 
 import notion
 import vivo_notes
-from config import CLAUDE_MODEL, DRY_RUN, TEAM_ROSTER, USE_OPENROUTER
+from config import CLAUDE_MODEL, DRY_RUN, USE_OPENROUTER
 
 if USE_OPENROUTER:
     client = anthropic.Anthropic(base_url="https://openrouter.ai/api", auth_token=os.environ["OPENROUTER_API_KEY"])
@@ -22,6 +22,8 @@ SYSTEM = """You are the operations brain of CaptureOS. You receive a transcript 
 field visit (possibly Telugu, Hindi, English, or a mix) and turn it into real work items.
 Lines may be labelled "Speaker 0", "Speaker 1"...; those labels are anonymous, so work out who \
 is who from names people use when addressing each other, and use real names as owners.
+People are whoever the transcript names; there is no fixed team list, and new names are normal. \
+If a name matches someone from earlier meetings (listed in the context), reuse that exact spelling.
 
 Use the tools to:
 - create_task for every concrete action item (who does what, by when). Resolve relative dates \
@@ -86,8 +88,9 @@ def run_brain(
         return "Question queued for the user."
 
     context = f"Today's date: {date.today().isoformat()}"
-    if TEAM_ROSTER:
-        context += f"\nTeam roster (valid owners): {', '.join(TEAM_ROSTER)}"
+    known = [] if DRY_RUN else notion.known_people()
+    if known:
+        context += f"\nPeople from earlier meetings (spelling reference, not a limit): {', '.join(known)}"
     if title:
         context += f"\nMeeting title hint: {title}"
     if speakers_hint:

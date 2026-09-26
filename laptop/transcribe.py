@@ -76,8 +76,10 @@ _SPEAKERS = """
 Separate speakers: start each turn on a new line as "Speaker 1:", "Speaker 2:" etc., keeping the same number for the same voice throughout."""
 
 
-def _openrouter(path: Path, language: str | None, meeting: bool) -> str:
+def _openrouter(path: Path, language: str | None, meeting: bool, names: list[str] | None = None) -> str:
     prompt = _STT_PROMPT.format(speakers=_SPEAKERS if meeting else "")
+    if names:
+        prompt += f"\nPeople who often come up (use these spellings if you hear them): {', '.join(names)}."
     if language:
         prompt += f"\nMain language hint: {language}."
     audio = base64.b64encode(path.read_bytes()).decode()
@@ -117,17 +119,23 @@ def extract_audio(video: Path) -> Path:
     return out
 
 
-def transcribe(path: Path, language: str | None = None, meeting: bool = False, speakers: int | None = None) -> str:
+def transcribe(
+    path: Path,
+    language: str | None = None,
+    meeting: bool = False,
+    speakers: int | None = None,
+    names: list[str] | None = None,
+) -> str:
     """language: "te" / "hi" / "en" hint, None = auto-detect. meeting=True -> long audio with speaker labels.
     Video files (e.g. a phone camera recording) are converted to audio first."""
     if path.suffix.lower() in VIDEO:
         audio = extract_audio(path)
         try:
-            return transcribe(audio, language, meeting, speakers)
+            return transcribe(audio, language, meeting, speakers, names)
         finally:
             audio.unlink(missing_ok=True)
     if TRANSCRIBE_PROVIDER == "openrouter":
-        return _openrouter(path, language, meeting)
+        return _openrouter(path, language, meeting, names)
     if TRANSCRIBE_PROVIDER == "openai":
         return _openai(path, language)
     if meeting:
