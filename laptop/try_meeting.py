@@ -48,7 +48,7 @@ def main() -> None:
     print(f"--- Transcript ({time.time() - t:.1f}s)\n{text}\n")
 
     t = time.time()
-    result = run_brain(text, title=path.stem, speakers_hint=voice.speakers_hint(owner, who))
+    result = run_brain(text, speakers_hint=voice.speakers_hint(owner, who))
     print(f"--- Claude ({time.time() - t:.1f}s): {result['summary']}\n")
     if result.get("attendees"):
         print("Attendees:", ", ".join(result["attendees"]))
