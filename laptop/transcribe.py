@@ -124,10 +124,11 @@ _REFUSAL = re.compile(r"^(i'?m sorry|sorry|i can'?t|i cannot|i am unable|i'?m un
 
 
 VIDEO = {".mp4", ".mov", ".mkv", ".webm", ".3gp", ".avi"}
+AUDIO_UNCONVERTED = {".m4a", ".aac", ".ogg", ".flac", ".wma", ".opus"}
 
 
 def extract_audio(video: Path) -> Path:
-    """Video file -> mono 16 kHz mp3 next to it (ffmpeg bundled via imageio-ffmpeg)."""
+    """Video/audio file -> mono 16 kHz mp3 next to it (ffmpeg bundled via imageio-ffmpeg)."""
     import subprocess
 
     import imageio_ffmpeg
@@ -152,7 +153,7 @@ def transcribe(
     """language: "te" / "hi" / "en" hint, None = auto-detect. meeting=True -> long audio with speaker labels.
     Video files (e.g. a phone camera recording) are converted to audio first.
     owner: the app user's enrolled voice intro (voice.owner()); prepended to meetings so their voice gets their name."""
-    if path.suffix.lower() in VIDEO:
+    if path.suffix.lower() in VIDEO | AUDIO_UNCONVERTED:
         audio = extract_audio(path)
         try:
             return transcribe(audio, language, meeting, speakers, names, owner)
