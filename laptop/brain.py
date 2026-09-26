@@ -7,6 +7,7 @@ import anthropic
 from anthropic import beta_tool
 
 import notion
+import slack
 import vivo_notes
 from config import CLAUDE_MODEL, DRY_RUN, USE_OPENROUTER
 
@@ -157,9 +158,29 @@ def run_brain(
         "attendees": next((a["args"].get("attendees", []) for a in actions if a["tool"] == "create_note"), []),
         "person_updates": next((a["args"].get("person_updates", []) for a in actions if a["tool"] == "create_note"), []),
         "vivo_note": export_vivo_note(actions, transcript, title),
+        "slack": export_slack(actions, title),
         "dry_run": DRY_RUN,
         "model": CLAUDE_MODEL,
     }
+
+
+def export_slack(actions: list[dict], title: str | None) -> dict:
+    """Post the meeting outcome to the team's Slack channel."""
+    if not slack.enabled():
+        return {"status": "skipped", "reason": "SLACK_WEBHOOK_URL not set"}
+    note = next((a for a in actions if a["tool"] == "create_note"), {})
+    args = note.get("args", {})
+    tasks = [a["args"] for a in actions if a["tool"] == "create_task"]
+    questions = [a["args"]["question"] for a in actions if a["tool"] == "ask_user"]
+    name = args.get("title") or title or "Meeting"
+    blocks = slack.meeting_blocks(
+        name, args.get("summary", ""), args.get("attendees", []), tasks, questions, note.get("url", "")
+    )
+    try:
+        slack.post(blocks, f"{name}: {len(tasks)} action items")
+        return {"status": "done"}
+    except Exception as e:
+        return {"status": "error", "error": str(e)}
 
 
 def export_vivo_note(actions: list[dict], transcript: str, title: str | None) -> dict:

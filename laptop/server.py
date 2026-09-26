@@ -12,6 +12,7 @@ from pydantic import BaseModel
 import api
 import db
 import notion
+import slack
 import vivo_notes
 import voice
 from brain import run_brain
@@ -63,7 +64,7 @@ class ProcessRequest(BaseModel):
 @app.get("/health")
 def health():
     return {"ok": True, "ip": lan_ip(), "claude": CLAUDE_MODEL, "transcribe": TRANSCRIBE_PROVIDER, "notion_dry_run": DRY_RUN,
-            "vivo_notes": {"token": vivo_notes.enabled(), "service": vivo_notes.health()}}
+            "vivo_notes": {"token": vivo_notes.enabled(), "service": vivo_notes.health()}, "slack": slack.enabled()}
 
 
 @app.post("/transcribe")

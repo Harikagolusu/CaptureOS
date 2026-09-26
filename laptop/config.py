@@ -27,6 +27,7 @@ SARVAM_MODE = os.environ.get("SARVAM_MODE", "transcribe")
 NOTION_TOKEN = os.environ.get("NOTION_TOKEN", "")
 NOTION_TASKS_DB = os.environ.get("NOTION_TASKS_DB", "")
 NOTION_NOTES_PAGE = os.environ.get("NOTION_NOTES_PAGE", "")
+SLACK_WEBHOOK_URL = os.environ.get("SLACK_WEBHOOK_URL", "")
 VIVO_NOTES_TOKEN = os.environ.get("VIVO_NOTES_TOKEN", "")
 VIVO_NOTES_PORT = os.environ.get("VIVO_NOTES_PORT", "9200")
 
