@@ -66,9 +66,12 @@ def process_meeting(meeting_id: int) -> None:
             s.commit()
 
             owner = voice.owner()
-            names = sorted({n for u in users for n in u.names()} | set([] if DRY_RUN else notion.known_people()))
-            text = transcribe(Path(m.audio_path), m.language or None, meeting=True, names=names, owner=owner)
-            m.transcript = text
+            if m.transcript:  # already transcribed (e.g. audio that arrived through the inbox)
+                text = m.transcript
+            else:
+                names = sorted({n for u in users for n in u.names()} | set([] if DRY_RUN else notion.known_people()))
+                text = transcribe(Path(m.audio_path), m.language or None, meeting=True, names=names, owner=owner)
+                m.transcript = text
             m.status = "thinking"
             s.add(m)
             s.commit()

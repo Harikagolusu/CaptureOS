@@ -9,6 +9,7 @@ Providers (TRANSCRIBE_PROVIDER in .env):
 import base64
 import json
 import os
+import re
 import tempfile
 from pathlib import Path
 
@@ -91,21 +92,29 @@ def _openrouter(
         prompt += f"\nMain language hint: {language}."
     audio = base64.b64encode(path.read_bytes()).decode()
     fmt = path.suffix.lstrip(".").lower() or "m4a"
-    r = httpx.post(
-        "https://openrouter.ai/api/v1/chat/completions",
-        headers={"Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}"},
-        json={
-            "model": OPENROUTER_STT_MODEL,
-            "messages": [{"role": "user", "content": [
-                {"type": "text", "text": prompt},
-                {"type": "input_audio", "input_audio": {"data": audio, "format": fmt}},
-            ]}],
-        },
-        timeout=300,
-    )
-    if r.status_code >= 400:
-        raise RuntimeError(f"OpenRouter {r.status_code}: {r.text[:300]}")
-    return r.json()["choices"][0]["message"]["content"].strip()
+    # GPT audio mini occasionally answers "I'm sorry, I can't transcribe..." at random; then retry on Gemini.
+    for model in dict.fromkeys([OPENROUTER_STT_MODEL, "google/gemini-3.8-flash"]):
+        r = httpx.post(
+            "https://openrouter.ai/api/v1/chat/completions",
+            headers={"Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}"},
+            json={
+                "model": model,
+                "messages": [{"role": "user", "content": [
+                    {"type": "text", "text": prompt},
+                    {"type": "input_audio", "input_audio": {"data": audio, "format": fmt}},
+                ]}],
+            },
+            timeout=300,
+        )
+        if r.status_code >= 400:
+            raise RuntimeError(f"OpenRouter {r.status_code}: {r.text[:300]}")
+        text = (r.json()["choices"][0]["message"]["content"] or "").strip()
+        if text and not _REFUSAL.search(text[:200]):
+            return text
+    raise RuntimeError("Transcription refused or empty on every model")
+
+
+_REFUSAL = re.compile(r"^(i'?m sorry|sorry|i can'?t|i cannot|i am unable|i'?m unable|unfortunately)", re.IGNORECASE)
 
 
 VIDEO = {".mp4", ".mov", ".mkv", ".webm", ".3gp", ".avi"}

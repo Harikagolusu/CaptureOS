@@ -126,7 +126,7 @@ def run_brain(
         actions.append({"tool": "ask_user", "args": {"question": question}, "status": "pending"})
         return "Question queued for the user."
 
-    context = f"Today's date: {date.today().isoformat()}"
+    context = f"Today: {date.today():%A %Y-%m-%d} (a weekday name means its next occurrence from today)"
     known = [] if DRY_RUN else notion.known_people()
     if known:
         context += f"\nPeople from earlier meetings (spelling reference, not a limit): {', '.join(known)}"

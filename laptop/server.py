@@ -12,7 +12,9 @@ from pydantic import BaseModel
 import api
 import db
 import field
+import inbox
 import notion
+import officekit
 import slack
 import vivo_notes
 import voice
@@ -24,6 +26,7 @@ app = FastAPI(title="CaptureOS Bridge")
 db.init()
 app.include_router(api.router)
 app.include_router(field.router)
+app.include_router(inbox.router)
 
 
 def lan_ip() -> str:
@@ -116,4 +119,5 @@ if __name__ == "__main__":
     import uvicorn
 
     print(f"\n  CaptureOS bridge -> http://{lan_ip()}:8000  (phone uses this IP)\n")
+    officekit.start()
     uvicorn.run(app, host="0.0.0.0", port=8000)

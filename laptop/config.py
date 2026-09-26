@@ -19,6 +19,8 @@ if _env.exists():
 # Claude access: direct Anthropic key preferred; otherwise OpenRouter's Anthropic-compatible endpoint.
 USE_OPENROUTER = not os.environ.get("ANTHROPIC_API_KEY") and bool(os.environ.get("OPENROUTER_API_KEY"))
 CLAUDE_MODEL = os.environ.get("CLAUDE_MODEL", "anthropic/claude-opus-5" if USE_OPENROUTER else "claude-opus-5")
+# Junior model: cheap first pass over gallery photos (work-related or personal?)
+TRIAGE_MODEL = os.environ.get("TRIAGE_MODEL", "anthropic/claude-haiku-4.5" if USE_OPENROUTER else "claude-haiku-4-5")
 TRANSCRIBE_PROVIDER = os.environ.get("TRANSCRIBE_PROVIDER", "openrouter")
 OPENROUTER_STT_MODEL = os.environ.get("OPENROUTER_STT_MODEL", "openai/gpt-audio-mini")
 TRANSCRIBE_MODEL = os.environ.get("TRANSCRIBE_MODEL", "gpt-4o-transcribe")

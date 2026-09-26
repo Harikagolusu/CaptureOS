@@ -87,7 +87,7 @@ def _tool_input(content: list[dict], tool_name: str, max_tokens: int = 4000) -> 
 
 
 def observe(photo: Path, voice_text: str, note: str, site: str) -> dict:
-    context = f"Site: {site}. Today: {date.today().isoformat()}."
+    context = f"Site: {site}. Today: {date.today():%A %Y-%m-%d}."
     if voice_text:
         context += f"\nInspector's voice note (may be Telugu/Hindi/English): {voice_text}"
     if note:

@@ -34,8 +34,14 @@ def admin_user(user: User = Depends(current_user)) -> User:
     return user
 
 
+def _profile(p: str) -> str:
+    if p not in PROFILES:
+        raise HTTPException(422, f"profile must be one of {', '.join(PROFILES)}")
+    return p
+
+
 def _user_out(u: User, with_token: bool = False) -> dict:
-    out = {"id": u.id, "name": u.name, "aliases": u.names()[1:], "role": u.role, "joined": bool(u.token)}
+    out = {"id": u.id, "name": u.name, "aliases": u.names()[1:], "role": u.role, "profile": u.profile, "joined": bool(u.token)}
     if with_token:
         out["token"] = u.token
     return out
@@ -43,15 +49,20 @@ def _user_out(u: User, with_token: bool = False) -> dict:
 
 # ---------- team & login ----------
 
+PROFILES = ("employee", "student", "manager", "field")
+
+
 class CreateTeam(BaseModel):
     team_name: str
     admin_name: str
     aliases: list[str] = []
+    profile: str = "manager"
 
 
 class Join(BaseModel):
     code: str
     name: str
+    profile: str = "employee"
 
 
 class AddMember(BaseModel):
@@ -66,7 +77,7 @@ def create_team(body: CreateTeam):
         team = Team(name=body.team_name, code=new_code())
         s.add(team)
         s.flush()
-        admin = User(team_id=team.id, name=body.admin_name, aliases=",".join(body.aliases), role="admin", token=new_token())
+        admin = User(team_id=team.id, name=body.admin_name, aliases=",".join(body.aliases), role="admin", token=new_token(), profile=_profile(body.profile))
         s.add(admin)
         s.commit()
         return {"team": {"id": team.id, "name": team.name, "code": team.code}, "user": _user_out(admin, with_token=True)}
@@ -87,6 +98,7 @@ def join(body: Join):
         if not user:
             user = User(team_id=team.id, name=body.name.strip())
         user.token = new_token()  # joining again (new phone) issues a fresh token
+        user.profile = _profile(body.profile)
         s.add(user)
         s.commit()
         s.refresh(user)
@@ -96,6 +108,22 @@ def join(body: Join):
 @router.get("/me")
 def me(user: User = Depends(current_user)):
     return _user_out(user)
+
+
+class MePatch(BaseModel):
+    profile: str
+
+
+@router.patch("/me")
+def update_me(body: MePatch, user: User = Depends(current_user)):
+    """Change what the smart inbox treats as important: employee | student | manager | field."""
+    with session() as s:
+        u = s.get(User, user.id)
+        u.profile = _profile(body.profile)
+        s.add(u)
+        s.commit()
+        s.refresh(u)
+        return _user_out(u)
 
 
 @router.get("/team")

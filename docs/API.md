@@ -11,17 +11,18 @@ Interactive docs with "Try it out": open `http://<laptop IP>:8000/docs` in a bro
 ### 1. First launch
 **Admin: "Create team"**
 ```
-POST /team   {"team_name": "BuildX", "admin_name": "Tej", "aliases": ["Teja"]}
+POST /team   {"team_name": "BuildX", "admin_name": "Tej", "aliases": ["Teja"], "profile": "manager"}
 → {"team": {"id": 1, "name": "BuildX", "code": "0KVE4Y"}, "user": {"id": 1, "name": "Tej", "role": "admin", "token": "..."}}
 ```
 Show the **code** big on screen; teammates type it in.
 
 **Member: "Join team"**
 ```
-POST /join   {"code": "0KVE4Y", "name": "Harika"}
+POST /join   {"code": "0KVE4Y", "name": "Harika", "profile": "employee"}
 → {"team": {...}, "user": {"id": 2, "name": "Harika", "role": "member", "token": "..."}}
 ```
 `404` wrong code. Name matching ignores case and accepts nicknames the admin added.
+`profile` = what the smart inbox treats as important: `employee` | `student` | `manager` | `field`. Change later with `PATCH /me {"profile": "student"}`.
 
 ### 2. Admin: team screen
 ```
@@ -96,6 +97,26 @@ POST /field/visits/3/report       → {"report_status": "building"}  then poll G
 GET  /field/visits/3/report.docx  → Word report with photos (download, then share / open)
 ```
 Compiling the report also creates tasks for medium/high problems (they show up in `/me/tasks` for their owner), a Notion page, and a Slack post.
+
+### 8. Smart inbox (productive Google Photos + recordings)
+The phone sends new gallery photos and recordings (on demand: "check today's photos", or a background
+watcher). Or the user just sends them to the laptop with **Office Kit file transfer**, and the laptop picks them up
+automatically. Claude files each into a self-named album; only items that matter for the user's profile get
+their text read and to-dos extracted. People/personal photos are filed, never turned into tasks.
+```
+POST /inbox   multipart: files=<one or many photos/audio/video>, client_ids="IMG_101,IMG_102" (gallery ids, optional),
+              taken_at="2026-09-26T10:05,2026-09-26T12:30" (optional)       → {"accepted": [ids], "skipped": [...]}
+GET  /inbox?kind=photo|audio&album=...&actionable=true   → [{
+        "id", "kind": "photo|audio", "source": "app|officekit", "status": "queued|done|error",
+        "album": "DBMS Lecture Slides", "category": "lecture slide", "people": false, "actionable": true,
+        "title", "summary", "text" (text read from the photo / audio transcript),
+        "task_ids": [7], "meeting_id": null (set when a recording was a meeting), "file_url": "/inbox/7/file"}]
+GET  /inbox/albums      → [{"album": "Sprint Boards", "count": 3, "cover_url": "/inbox/9/file"}]
+GET  /inbox/{id}/file   → the photo / audio (send the auth header)
+```
+Audio is classified as `meeting` (runs the full meeting flow → shows in `/meetings`), `lecture` (study notes in
+`summary`), `voice_memo` (to-dos → `/me/tasks`), `call`, `personal`, or `other`.
+Duplicates (same `client_id`, or the same file arriving from the app and Office Kit) are skipped.
 
 ### Save to vivo Notes (no API)
 On meeting detail, a **Save to Notes** button shares `summary + my tasks` as text via `share_plus`; the user picks vivo Notes.

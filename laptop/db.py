@@ -40,6 +40,7 @@ class User(SQLModel, table=True):
     name: str
     aliases: str = ""  # comma-separated nicknames, e.g. "Teja,Tej"
     role: str = "member"  # admin | member
+    profile: str = "employee"  # employee | student | manager | field -- what the inbox treats as important
     token: str | None = Field(default=None, index=True, unique=True)  # set when the person joins on their phone
 
     def names(self) -> list[str]:
@@ -133,6 +134,32 @@ class Observation(SQLModel, table=True):
     action: str = ""
     owner: str = ""
     task_id: int | None = Field(default=None, foreign_key="task.id")
+    created_at: datetime = Field(default_factory=now)
+
+
+class InboxItem(SQLModel, table=True):
+    """One photo or audio file from the phone (app upload or Office Kit transfer)."""
+
+    id: int | None = Field(default=None, primary_key=True)
+    team_id: int = Field(foreign_key="team.id", index=True)
+    user_id: int = Field(foreign_key="user.id", index=True)
+    kind: str = "photo"  # photo | audio
+    source: str = "app"  # app | officekit
+    client_id: str = Field(default="", index=True)  # gallery id / file hash, so re-sends are skipped
+    content_hash: str = Field(default="", index=True)  # same file from the app and Office Kit counts once
+    taken_at: str = ""
+    path: str = ""
+    status: str = "queued"  # queued | done | error
+    album: str = ""  # AI-named smart album, e.g. "Lecture slides - DBMS"
+    category: str = ""
+    people: bool = False
+    actionable: bool = False  # matches the user's criteria (work/study) -> text + to-dos extracted
+    title: str = ""
+    text: str = ""  # text read from the photo, or the audio transcript
+    summary: str = ""
+    task_ids: str = ""  # comma-separated
+    meeting_id: int | None = Field(default=None, foreign_key="meeting.id")  # audio that was a meeting
+    error: str = ""
     created_at: datetime = Field(default_factory=now)
 
 
