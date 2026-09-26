@@ -25,10 +25,21 @@ is who from names people use when addressing each other, and use real names as o
 People are whoever the transcript names; there is no fixed team list, and new names are normal. \
 If a name matches someone from earlier meetings (listed in the context), reuse that exact spelling.
 
+Real meetings are messy. Read the whole conversation before acting:
+- Skip small talk, jokes, side chatter and thinking out loud; they are not tasks or decisions.
+- A task exists only when work was actually agreed. A request someone declined ("no, I can't \
+this week") is not assigned to them: follow the discussion to whoever took it on, and if nobody \
+did, create it with owner "unassigned" and ask_user who should own it.
+- When people revise something (new owner, new deadline, dropped idea), the final version wins; \
+don't create tasks for superseded versions or dropped ideas.
+- Tentative commitments ("I'll try", "maybe by Friday") still become tasks; mention the \
+uncertainty in the title only if it matters, and ask_user if the owner is truly unclear.
+
 Use the tools to:
-- create_task for every concrete action item (who does what, by when). Resolve relative dates \
+- create_task for every agreed action item (who does what, by when). Resolve relative dates \
 ("Friday", "next week") against today's date. Priority is high, medium, or low.
-- create_note exactly once, with a short English summary and the list of decisions.
+- create_note exactly once, with a short English summary, the decisions, the attendees (everyone \
+who spoke or was named as present) and which speaker label is which person where you can tell.
 - ask_user when an action item has no clear owner or the transcript is ambiguous; still create \
 everything you can.
 
@@ -66,15 +77,25 @@ def run_brain(
         return record("create_task", args, lambda: notion.create_task(**args, source=source))
 
     @beta_tool
-    def create_note(title: str, summary: str, decisions: list[str]) -> str:
-        """Create the meeting note page in Notion with summary, decisions and the full transcript.
+    def create_note(
+        title: str, summary: str, decisions: list[str], attendees: list[str], speaker_map: list[str]
+    ) -> str:
+        """Create the meeting note page in Notion with summary, decisions, attendees and the full transcript.
 
         Args:
             title: Meeting title in English.
             summary: 2-4 sentence English summary.
             decisions: Decisions that were agreed, one per item.
+            attendees: Names of everyone who spoke or was named as present.
+            speaker_map: One entry per identified speaker label, e.g. "Speaker 1 = Tej (manager)". Empty if unknown.
         """
-        args = {"title": title, "summary": summary, "decisions": decisions}
+        args = {
+            "title": title,
+            "summary": summary,
+            "decisions": decisions,
+            "attendees": attendees,
+            "speaker_map": speaker_map,
+        }
         return record("create_note", args, lambda: notion.create_note(**args, transcript=transcript))
 
     @beta_tool
@@ -116,6 +137,7 @@ def run_brain(
     return {
         "summary": summary,
         "actions": actions,
+        "attendees": next((a["args"].get("attendees", []) for a in actions if a["tool"] == "create_note"), []),
         "vivo_note": export_vivo_note(actions, transcript, title),
         "dry_run": DRY_RUN,
         "model": CLAUDE_MODEL,
@@ -130,7 +152,7 @@ def export_vivo_note(actions: list[dict], transcript: str, title: str | None) ->
     tasks = [a["args"] for a in actions if a["tool"] == "create_task"]
     questions = [a["args"]["question"] for a in actions if a["tool"] == "ask_user"]
     body = vivo_notes.meeting_html(
-        note.get("summary", ""), note.get("decisions", []), tasks, questions, transcript
+        note.get("summary", ""), note.get("decisions", []), tasks, questions, transcript, note.get("attendees")
     )
     try:
         note_id = vivo_notes.create_note(note.get("title") or title or "Meeting", body)

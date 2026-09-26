@@ -53,15 +53,28 @@ def create_task(title: str, owner: str, due: str | None, priority: str, source: 
     return page["url"]
 
 
-def create_note(title: str, summary: str, decisions: list[str], transcript: str) -> str:
+def _bullets(items: list[str]) -> list[dict]:
+    return [
+        {"object": "block", "type": "bulleted_list_item", "bulleted_list_item": {"rich_text": _text(i)}}
+        for i in items
+    ]
+
+
+def create_note(
+    title: str,
+    summary: str,
+    decisions: list[str],
+    transcript: str,
+    attendees: list[str] | None = None,
+    speaker_map: list[str] | None = None,
+) -> str:
     blocks = [
+        {"object": "block", "type": "paragraph", "paragraph": {"rich_text": _text("Attendees: " + ", ".join(attendees or ["unknown"]))}},
+        *_bullets(speaker_map or []),
         {"object": "block", "type": "heading_2", "heading_2": {"rich_text": _text("Summary")}},
         {"object": "block", "type": "paragraph", "paragraph": {"rich_text": _text(summary)}},
         {"object": "block", "type": "heading_2", "heading_2": {"rich_text": _text("Decisions")}},
-        *[
-            {"object": "block", "type": "bulleted_list_item", "bulleted_list_item": {"rich_text": _text(d)}}
-            for d in decisions
-        ],
+        *_bullets(decisions),
         {"object": "block", "type": "heading_2", "heading_2": {"rich_text": _text("Transcript")}},
         # Notion caps a rich_text item at 2000 chars; split long transcripts into paragraphs.
         *[

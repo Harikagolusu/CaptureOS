@@ -1,0 +1,12 @@
+Speaker 1: Okay guys, lets start. Anyone watched the match yesterday? Crazy last over.
+Speaker 2: Ha, yeah Tej, I was shouting at the TV. Anyway.
+Speaker 1: Right. So Harika, can you take the login page redesign this week?
+Speaker 3: Honestly no Tej, I'm stuck with the payment bug till Wednesday. Can't take it.
+Speaker 2: I can do the login page. Give me till next Tuesday.
+Speaker 1: Done, Kiran takes login page, Tuesday. Harika finish payment bug by Wednesday then.
+Speaker 3: Yes, Wednesday is fine.
+Speaker 1: Also we should maybe add dark mode? Actually no, forget dark mode, not this sprint.
+Speaker 2: And someone has to update the API docs before the demo.
+Speaker 1: Hmm, who's free for docs? ... Okay let's figure that out later.
+Speaker 3: Oh and Tej, I'll try to review Kiran's PR by Friday, maybe.
+Speaker 1: Cool. Chai break after this? Okay, that's it.

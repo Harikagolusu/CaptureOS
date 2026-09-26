@@ -22,9 +22,16 @@ def health() -> bool:
         return False
 
 
-def meeting_html(summary: str, decisions: list[str], tasks: list[dict], questions: list[str], transcript: str) -> str:
+def meeting_html(
+    summary: str,
+    decisions: list[str],
+    tasks: list[dict],
+    questions: list[str],
+    transcript: str,
+    attendees: list[str] | None = None,
+) -> str:
     e = html.escape
-    parts = [f"<p><b>Summary</b><br>{e(summary)}</p>"]
+    parts = [f"<p><b>Attendees:</b> {e(', '.join(attendees or ['unknown']))}</p>", f"<p><b>Summary</b><br>{e(summary)}</p>"]
     if tasks:
         rows = []
         for t in tasks:
