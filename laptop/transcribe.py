@@ -1,7 +1,7 @@
 """Audio file -> transcript text.
 
 Providers (TRANSCRIBE_PROVIDER in .env):
-- openrouter (default): Gemini Flash via OpenRouter; meetings get "Speaker N:" lines from the prompt.
+- openrouter (default): GPT audio mini (or Gemini Flash) via OpenRouter; meetings get "Speaker N:" lines from the prompt.
 - sarvam: short clips use the sync API (< 30 s); meetings use the batch API with
   speaker diarization, rendered as "Speaker 0: ..." lines so Claude can work out who owns what.
 - openai: gpt-4o-transcribe, no diarization.
