@@ -9,3 +9,5 @@ imageio-ffmpeg
 sqlmodel
 pillow
 python-docx
+soundcard
+numpy
