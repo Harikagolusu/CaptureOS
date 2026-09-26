@@ -9,6 +9,8 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
+import api
+import db
 import notion
 import vivo_notes
 import voice
@@ -17,6 +19,8 @@ from config import CLAUDE_MODEL, DATA, DRY_RUN, TRANSCRIBE_PROVIDER
 from transcribe import transcribe
 
 app = FastAPI(title="CaptureOS Bridge")
+db.init()
+app.include_router(api.router)
 
 
 def lan_ip() -> str:

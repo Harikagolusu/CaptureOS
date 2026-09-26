@@ -1,0 +1,83 @@
+# CaptureOS API (for the Flutter app)
+
+Base URL: `http://<laptop IP>:8000` for now (the server prints it on start; `/health` shows it). Cloud URL later.
+Interactive docs with "Try it out": open `http://<laptop IP>:8000/docs` in a browser.
+
+**Auth:** after `/team` or `/join`, store `user.token` on the phone and send it on every call:
+`Authorization: Bearer <token>`. `401` = token missing or wrong (send the user back to the join screen).
+
+## Screens → calls
+
+### 1. First launch
+**Admin: "Create team"**
+```
+POST /team   {"team_name": "BuildX", "admin_name": "Tej", "aliases": ["Teja"]}
+→ {"team": {"id": 1, "name": "BuildX", "code": "0KVE4Y"}, "user": {"id": 1, "name": "Tej", "role": "admin", "token": "..."}}
+```
+Show the **code** big on screen; teammates type it in.
+
+**Member: "Join team"**
+```
+POST /join   {"code": "0KVE4Y", "name": "Harika"}
+→ {"team": {...}, "user": {"id": 2, "name": "Harika", "role": "member", "token": "..."}}
+```
+`404` wrong code. Name matching ignores case and accepts nicknames the admin added.
+
+### 2. Admin: team screen
+```
+GET  /team                         → {"name", "code" (admin only), "members": [{"id","name","aliases","role","joined"}]}
+POST /team/members  {"name": "Hrithik", "aliases": ["Hritik"]}     (admin only)
+```
+`joined: false` = added by the admin but hasn't opened the app yet.
+
+### 3. Record a meeting (usually the admin)
+Record in the background (foreground-service notification), then upload the file (audio **or** video):
+```
+POST /meetings   multipart: audio=<file>, title (optional), language (optional: te | hi | en)
+→ {"id": 7, "status": "uploaded"}
+```
+Returns at once. Then **poll every 3 s**:
+```
+GET /meetings/7   → "status": uploaded → transcribing → thinking → done   (or "error" + "error" message)
+```
+Takes ~30–60 s for a 1–2 minute meeting.
+
+### 4. Meeting detail (everyone in the team)
+```
+GET /meetings/7 →
+{
+  "id": 7, "title": "Daily Standup - 26 Sep 2026", "status": "done", "summary": "...", "notion_url": "...",
+  "attendees": [{"name": "Harika", "user_id": 2, "speaker_label": "speaker 2", "update": "done deployment; next fix bugs ..."}],
+  "tasks":     [{"id": 3, "title": "Fix bugs ...", "owner": "Harika", "owner_user_id": 2, "due": "2026-09-27", "priority": "high", "status": "todo"}],
+  "questions": [{"id": 1, "text": "Who owns the API docs?", "answer": "", "status": "open"}],
+  "segments":  [{"speaker": "Speaker 2", "name": "Harika", "user_id": 2, "text": "Today I completed ..."}]
+}
+GET /meetings   → list: [{"id", "title", "status", "created_at", "summary"}]  (newest first)
+```
+
+### 5. My view (member home)
+```
+GET /me                      → who am I (name, role)
+GET /me/tasks?status=todo    → my tasks (status filter optional: todo | doing | done)
+GET /me/meetings/7           → {"summary", "my_update", "my_tasks": [...], "i_said": ["...", "..."]}
+PATCH /tasks/3  {"status": "done"}       → updates the app DB and the Notion page
+```
+Members can only change their own tasks; the admin can change any.
+
+### 6. Admin answers Claude's questions
+```
+POST /questions/1/answer  {"answer": "Kiran owns the docs"}      (admin only)
+```
+
+### Optional: admin voice intro (once)
+```
+POST /voice/enroll   multipart: audio=<~10 s "Hi, I'm Tej, I'm the manager">, name, role
+GET  /voice          → {"enrolled", "name", "role"}
+```
+Makes the admin's voice come out as their name in every meeting.
+
+### Save to vivo Notes (no API)
+On meeting detail, a **Save to Notes** button shares `summary + my tasks` as text via `share_plus`; the user picks vivo Notes.
+
+## Errors
+`401` no/bad token · `403` not allowed (member doing admin things, or someone else's task) · `404` wrong code / not in your team · `422` bad input.

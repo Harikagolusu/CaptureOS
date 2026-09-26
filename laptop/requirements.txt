@@ -6,3 +6,4 @@ python-multipart
 httpx
 sarvamai
 imageio-ffmpeg
+sqlmodel

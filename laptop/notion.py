@@ -133,3 +133,19 @@ def create_note(
     props = {"title": {"title": _text(title)}} if NOTION_NOTES_PAGE else {"Name": {"title": _text(title)}}
     page = _post("/pages", {"parent": parent, "properties": props, "children": blocks[:100]})
     return page["url"]
+
+
+_STATUS = {"todo": "To do", "doing": "Doing", "done": "Done"}
+
+
+def set_status(page_url: str, status: str) -> None:
+    """Mirror an app status change onto the Notion task page (page id = last 32 hex chars of its URL)."""
+    page_id = page_url.rstrip("/").split("-")[-1].split("/")[-1][-32:]
+    r = httpx.patch(
+        f"{API}/pages/{page_id}",
+        headers=HEADERS,
+        json={"properties": {"Status": {"select": {"name": _STATUS[status]}}}},
+        timeout=20,
+    )
+    if r.status_code >= 400:
+        raise RuntimeError(f"Notion {r.status_code}: {r.text[:300]}")
