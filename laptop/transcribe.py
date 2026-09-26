@@ -71,7 +71,7 @@ def _openai(path: Path, language: str | None) -> str:
         return OpenAI().audio.transcriptions.create(**kwargs).text
 
 
-_STT_PROMPT = """Transcribe this audio verbatim, in the language(s) actually spoken (Telugu, Hindi, English or a mix); keep code-switching as spoken. Output only the transcript, no commentary.{speakers}"""
+_STT_PROMPT = """Transcribe this audio verbatim, in the language(s) actually spoken (Telugu, Hindi, English or a mix); keep code-switching as spoken, and write English words and names in Latin script. Output only the transcript, no commentary.{speakers}"""
 _SPEAKERS = """
 Separate speakers: start each turn on a new line as "Speaker 1:", "Speaker 2:" etc., keeping the same number for the same voice throughout."""
 

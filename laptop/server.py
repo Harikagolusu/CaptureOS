@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 import api
 import db
+import field
 import notion
 import slack
 import vivo_notes
@@ -22,6 +23,7 @@ from transcribe import transcribe
 app = FastAPI(title="CaptureOS Bridge")
 db.init()
 app.include_router(api.router)
+app.include_router(field.router)
 
 
 def lan_ip() -> str:

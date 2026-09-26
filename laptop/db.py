@@ -102,6 +102,40 @@ class Question(SQLModel, table=True):
     status: str = "open"  # open | answered
 
 
+class FieldVisit(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    team_id: int = Field(foreign_key="team.id", index=True)
+    created_by: int = Field(foreign_key="user.id")
+    site: str
+    report_status: str = "none"  # none | building | done | error
+    report_error: str = ""
+    summary: str = ""
+    key_issues: str = ""  # newline-separated
+    recommendations: str = ""  # newline-separated
+    report_path: str = ""
+    notion_url: str = ""
+    created_at: datetime = Field(default_factory=now)
+
+
+class Observation(SQLModel, table=True):
+    id: int | None = Field(default=None, primary_key=True)
+    visit_id: int = Field(foreign_key="fieldvisit.id", index=True)
+    status: str = "processing"  # processing | done | error
+    error: str = ""
+    photo_path: str
+    voice_path: str = ""
+    voice_text: str = ""
+    note: str = ""
+    title: str = ""
+    observation: str = ""
+    category: str = ""
+    severity: str = ""  # none | low | medium | high
+    action: str = ""
+    owner: str = ""
+    task_id: int | None = Field(default=None, foreign_key="task.id")
+    created_at: datetime = Field(default_factory=now)
+
+
 def init() -> None:
     SQLModel.metadata.create_all(engine)
 

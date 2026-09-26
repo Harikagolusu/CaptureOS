@@ -7,3 +7,5 @@ httpx
 sarvamai
 imageio-ffmpeg
 sqlmodel
+pillow
+python-docx
