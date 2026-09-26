@@ -99,8 +99,33 @@ def _openrouter(path: Path, language: str | None, meeting: bool) -> str:
     return r.json()["choices"][0]["message"]["content"].strip()
 
 
+VIDEO = {".mp4", ".mov", ".mkv", ".webm", ".3gp", ".avi"}
+
+
+def extract_audio(video: Path) -> Path:
+    """Video file -> mono 16 kHz mp3 next to it (ffmpeg bundled via imageio-ffmpeg)."""
+    import subprocess
+
+    import imageio_ffmpeg
+
+    out = video.with_suffix(".mp3")
+    subprocess.run(
+        [imageio_ffmpeg.get_ffmpeg_exe(), "-y", "-i", str(video), "-vn", "-ac", "1", "-ar", "16000", "-b:a", "64k", str(out)],
+        check=True,
+        capture_output=True,
+    )
+    return out
+
+
 def transcribe(path: Path, language: str | None = None, meeting: bool = False, speakers: int | None = None) -> str:
-    """language: "te" / "hi" / "en" hint, None = auto-detect. meeting=True -> long audio with speaker labels."""
+    """language: "te" / "hi" / "en" hint, None = auto-detect. meeting=True -> long audio with speaker labels.
+    Video files (e.g. a phone camera recording) are converted to audio first."""
+    if path.suffix.lower() in VIDEO:
+        audio = extract_audio(path)
+        try:
+            return transcribe(audio, language, meeting, speakers)
+        finally:
+            audio.unlink(missing_ok=True)
     if TRANSCRIBE_PROVIDER == "openrouter":
         return _openrouter(path, language, meeting)
     if TRANSCRIBE_PROVIDER == "openai":
