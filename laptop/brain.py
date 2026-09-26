@@ -22,6 +22,9 @@ SYSTEM = """You are the operations brain of CaptureOS. You receive a transcript 
 field visit (possibly Telugu, Hindi, English, or a mix) and turn it into real work items.
 Lines may be labelled "Speaker 0", "Speaker 1"...; those labels are anonymous, so work out who \
 is who from names people use when addressing each other, and use real names as owners.
+Conversation cues identify voices: when someone is addressed by name with a question or request \
+("Kiran, what's the update?"), the next different voice that answers is most likely that person, and \
+the same voice label keeps that name for the rest of the meeting unless the context contradicts it.
 People are whoever the transcript names; there is no fixed team list, and new names are normal. \
 If a name matches someone from earlier meetings (listed in the context), reuse that exact spelling.
 
@@ -39,7 +42,8 @@ Use the tools to:
 - create_task for every agreed action item (who does what, by when). Resolve relative dates \
 ("Friday", "next week") against today's date. Priority is high, medium, or low.
 - create_note exactly once, with a short English summary, the decisions, the attendees (everyone \
-who spoke or was named as present) and which speaker label is which person where you can tell.
+who spoke or was named as present), which speaker label is which person where you can tell, and \
+one status line per person who gave an update (done / next / blocked), written for the manager.
 - ask_user when an action item has no clear owner or the transcript is ambiguous; still create \
 everything you can.
 
@@ -69,7 +73,7 @@ def run_brain(
 
         Args:
             title: Short imperative task title in English.
-            owner: Person responsible, exactly as named in the transcript or roster; "unassigned" if unknown.
+            owner: Person responsible, as named in the transcript; "unassigned" if nobody took it on.
             priority: One of high, medium, low.
             due: Due date as YYYY-MM-DD, or empty if none was mentioned.
         """
@@ -78,9 +82,14 @@ def run_brain(
 
     @beta_tool
     def create_note(
-        title: str, summary: str, decisions: list[str], attendees: list[str], speaker_map: list[str]
+        title: str,
+        summary: str,
+        decisions: list[str],
+        attendees: list[str],
+        speaker_map: list[str],
+        person_updates: list[str],
     ) -> str:
-        """Create the meeting note page in Notion with summary, decisions, attendees and the full transcript.
+        """Create the meeting note page in Notion with summary, decisions, attendees, updates and the transcript.
 
         Args:
             title: Meeting title in English.
@@ -88,6 +97,7 @@ def run_brain(
             decisions: Decisions that were agreed, one per item.
             attendees: Names of everyone who spoke or was named as present.
             speaker_map: One entry per identified speaker label, e.g. "Speaker 1 = Tej (manager)". Empty if unknown.
+            person_updates: One line per person who reported status, e.g. "Kiran: done login page; next payments; blocked on API keys". Empty if nobody did.
         """
         args = {
             "title": title,
@@ -95,6 +105,7 @@ def run_brain(
             "decisions": decisions,
             "attendees": attendees,
             "speaker_map": speaker_map,
+            "person_updates": person_updates,
         }
         return record("create_note", args, lambda: notion.create_note(**args, transcript=transcript))
 
@@ -138,6 +149,7 @@ def run_brain(
         "summary": summary,
         "actions": actions,
         "attendees": next((a["args"].get("attendees", []) for a in actions if a["tool"] == "create_note"), []),
+        "person_updates": next((a["args"].get("person_updates", []) for a in actions if a["tool"] == "create_note"), []),
         "vivo_note": export_vivo_note(actions, transcript, title),
         "dry_run": DRY_RUN,
         "model": CLAUDE_MODEL,
@@ -152,7 +164,7 @@ def export_vivo_note(actions: list[dict], transcript: str, title: str | None) ->
     tasks = [a["args"] for a in actions if a["tool"] == "create_task"]
     questions = [a["args"]["question"] for a in actions if a["tool"] == "ask_user"]
     body = vivo_notes.meeting_html(
-        note.get("summary", ""), note.get("decisions", []), tasks, questions, transcript, note.get("attendees")
+        note.get("summary", ""), note.get("decisions", []), tasks, questions, transcript, note.get("attendees"), note.get("person_updates")
     )
     try:
         note_id = vivo_notes.create_note(note.get("title") or title or "Meeting", body)

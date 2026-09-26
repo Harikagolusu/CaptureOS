@@ -29,6 +29,7 @@ def meeting_html(
     questions: list[str],
     transcript: str,
     attendees: list[str] | None = None,
+    person_updates: list[str] | None = None,
 ) -> str:
     e = html.escape
     parts = [f"<p><b>Attendees:</b> {e(', '.join(attendees or ['unknown']))}</p>", f"<p><b>Summary</b><br>{e(summary)}</p>"]
@@ -38,6 +39,8 @@ def meeting_html(
             due = f" · due {e(t['due'])}" if t.get("due") else ""
             rows.append(f"☐ {e(t['title'])} → <b>{e(t['owner'])}</b> ({e(t['priority'])}{due})")
         parts.append("<p><b>Action items</b><br>" + "<br>".join(rows) + "</p>")
+    if person_updates:
+        parts.append("<p><b>Updates by person</b><br>" + "<br>".join(f"• {e(u)}" for u in person_updates) + "</p>")
     if decisions:
         parts.append("<p><b>Decisions</b><br>" + "<br>".join(f"• {e(d)}" for d in decisions) + "</p>")
     if questions:

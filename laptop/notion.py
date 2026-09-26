@@ -67,12 +67,18 @@ def create_note(
     transcript: str,
     attendees: list[str] | None = None,
     speaker_map: list[str] | None = None,
+    person_updates: list[str] | None = None,
 ) -> str:
     blocks = [
         {"object": "block", "type": "paragraph", "paragraph": {"rich_text": _text("Attendees: " + ", ".join(attendees or ["unknown"]))}},
         *_bullets(speaker_map or []),
         {"object": "block", "type": "heading_2", "heading_2": {"rich_text": _text("Summary")}},
         {"object": "block", "type": "paragraph", "paragraph": {"rich_text": _text(summary)}},
+        *(
+            [{"object": "block", "type": "heading_2", "heading_2": {"rich_text": _text("Updates by person")}}, *_bullets(person_updates)]
+            if person_updates
+            else []
+        ),
         {"object": "block", "type": "heading_2", "heading_2": {"rich_text": _text("Decisions")}},
         *_bullets(decisions),
         {"object": "block", "type": "heading_2", "heading_2": {"rich_text": _text("Transcript")}},

@@ -76,8 +76,15 @@ _SPEAKERS = """
 Separate speakers: start each turn on a new line as "Speaker 1:", "Speaker 2:" etc., keeping the same number for the same voice throughout."""
 
 
-def _openrouter(path: Path, language: str | None, meeting: bool, names: list[str] | None = None) -> str:
+def _openrouter(
+    path: Path, language: str | None, meeting: bool, names: list[str] | None = None, intro_name: str | None = None
+) -> str:
     prompt = _STT_PROMPT.format(speakers=_SPEAKERS if meeting else "")
+    if intro_name:
+        prompt += (
+            f"\nThe recording starts with {intro_name} briefly introducing themselves. Label every turn "
+            f'in that voice "{intro_name}:" instead of a speaker number.'
+        )
     if names:
         prompt += f"\nPeople who often come up (use these spellings if you hear them): {', '.join(names)}."
     if language:
@@ -125,15 +132,27 @@ def transcribe(
     meeting: bool = False,
     speakers: int | None = None,
     names: list[str] | None = None,
+    owner: dict | None = None,
 ) -> str:
     """language: "te" / "hi" / "en" hint, None = auto-detect. meeting=True -> long audio with speaker labels.
-    Video files (e.g. a phone camera recording) are converted to audio first."""
+    Video files (e.g. a phone camera recording) are converted to audio first.
+    owner: the app user's enrolled voice intro (voice.owner()); prepended to meetings so their voice gets their name."""
     if path.suffix.lower() in VIDEO:
         audio = extract_audio(path)
         try:
-            return transcribe(audio, language, meeting, speakers, names)
+            return transcribe(audio, language, meeting, speakers, names, owner)
         finally:
             audio.unlink(missing_ok=True)
+    if meeting and owner:
+        import voice
+
+        combined = voice.with_intro(path, owner["path"])
+        try:
+            if TRANSCRIBE_PROVIDER == "openrouter":
+                return _openrouter(combined, language, meeting, names, intro_name=owner["name"])
+            return transcribe(combined, language, meeting, speakers, names)
+        finally:
+            combined.unlink(missing_ok=True)
     if TRANSCRIBE_PROVIDER == "openrouter":
         return _openrouter(path, language, meeting, names)
     if TRANSCRIBE_PROVIDER == "openai":

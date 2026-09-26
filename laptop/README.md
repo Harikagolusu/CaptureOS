@@ -19,6 +19,8 @@ Without Notion keys the server runs in **dry-run**: Claude still decides, and ac
 | POST | `/transcribe` | multipart `audio` (≤ 30 s voice note), optional `language` (`te`/`hi`/`en`) | `{transcript}` |
 | POST | `/process` | JSON `{transcript, title?}` | `{summary, actions[], dry_run, id}` |
 | POST | `/meeting` | multipart `audio`, `language?`, `title?`, `speakers?` | speaker-labelled transcript + process result |
+| POST | `/voice/enroll` | multipart `audio` (~10 s "Hi, I'm Tej, I'm the manager"), `name`, `role?` | one-time setup of the app user's voice |
+| GET | `/voice` | none | `{enrolled, name, role}` |
 
 ## Test
 ```bash
@@ -44,3 +46,9 @@ curl -X POST localhost:8000/meeting -F audio=@my_recording.m4a -F language=te
 - Uses Office Kit's local third-party Notes API (`127.0.0.1:9200/third-party`, shipped as the `office-suite-notes` skill in the Office Kit install).
 - Copy the token from the Office Kit app into `.env` as `VIVO_NOTES_TOKEN=`. `/health` shows whether the service is up and the token is set.
 - Every processed meeting becomes one note: summary, action items, decisions, open questions, transcript.
+
+## Who is who
+- **App user:** enrolls once (`/voice/enroll`). Their intro is placed in front of every meeting, so the transcript labels their voice with their name.
+- **Everyone else:** identified from the conversation: "Kiran, what's the update?" → the next voice that answers is Kiran. No setup for teammates.
+- Names already in Notion are passed as spelling hints, so the same person keeps the same spelling.
+- The meeting note shows attendees, which voice is who, and **Updates by person** (done / next / blocked) for the manager.

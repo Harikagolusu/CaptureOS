@@ -9,6 +9,7 @@ import time
 from pathlib import Path
 
 import notion
+import voice
 from brain import run_brain
 from config import DRY_RUN
 from transcribe import VIDEO, transcribe
@@ -40,20 +41,29 @@ def main() -> None:
 
     t = time.time()
     names = [] if DRY_RUN else notion.known_people()
-    text = transcribe(path, language, meeting=True, names=names)
+    owner = voice.owner()
+    if owner:
+        print(f"Voice intro: {owner['name']} ({owner['role'] or 'no role'})")
+    text = transcribe(path, language, meeting=True, names=names, owner=owner)
     print(f"--- Transcript ({time.time() - t:.1f}s)\n{text}\n")
 
     t = time.time()
-    result = run_brain(text, title=path.stem, speakers_hint=who)
+    result = run_brain(text, title=path.stem, speakers_hint=voice.speakers_hint(owner, who))
     print(f"--- Claude ({time.time() - t:.1f}s): {result['summary']}\n")
+    if result.get("attendees"):
+        print("Attendees:", ", ".join(result["attendees"]))
+    for u in result.get("person_updates", []):
+        print("Update:", u)
     for a in result["actions"]:
         args = a["args"]
         if a["tool"] == "create_task":
             line = f"TASK  {args['title']} -> {args['owner']} ({args['priority']}, due {args.get('due') or '-'})"
         elif a["tool"] == "create_note":
             line = f"NOTE  {args['title']}"
-        else:
+        elif a["tool"] == "ask_user":
             line = f"ASK   {args['question']}"
+        else:
+            line = a["tool"]
         print(f"[{a['status']}] {line}" + (f"\n        {a['url']}" if a.get("url") else "") + (f"\n        ERROR {a['error']}" if a.get("error") else ""))
 
 

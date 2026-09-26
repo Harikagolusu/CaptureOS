@@ -11,6 +11,7 @@ from pydantic import BaseModel
 
 import notion
 import vivo_notes
+import voice
 from brain import run_brain
 from config import CLAUDE_MODEL, DATA, DRY_RUN, TRANSCRIBE_PROVIDER
 from transcribe import transcribe
@@ -42,7 +43,8 @@ async def transcribe_upload(audio: UploadFile, language: str | None, meeting: bo
         path = Path(tmp.name)
     try:
         names = [] if DRY_RUN else await run_in_threadpool(notion.known_people)
-        return await run_in_threadpool(transcribe, path, language or None, meeting, speakers, names)
+        owner = voice.owner() if meeting else None
+        return await run_in_threadpool(transcribe, path, language or None, meeting, speakers, names, owner)
     except Exception as e:
         raise HTTPException(502, f"Transcription failed: {e}")
     finally:
@@ -83,11 +85,25 @@ async def meeting(
 ):
     """Full pipeline in one call: recorded meeting audio in, transcript + actions out."""
     text = await transcribe_upload(audio, language, meeting=True, speakers=speakers)
-    result = await run_in_threadpool(run_brain, text, title or None, "cloud", who or None)
+    hint = voice.speakers_hint(voice.owner(), who or None)
+    result = await run_in_threadpool(run_brain, text, title or None, "cloud", hint)
     result["transcript"] = text
     result["id"] = save("meeting", result)
     return result
 
+
+
+@app.post("/voice/enroll")
+async def voice_enroll(audio: UploadFile = File(...), name: str = Form(...), role: str = Form("")):
+    """One-time setup: the app user records ~10 s ("Hi, I'm Tej, I'm the manager")."""
+    info = voice.save_owner(await audio.read(), Path(audio.filename or "").suffix, name, role)
+    return {"enrolled": True, "name": info["name"], "role": info["role"]}
+
+
+@app.get("/voice")
+def voice_status():
+    info = voice.owner()
+    return {"enrolled": bool(info), "name": info and info["name"], "role": info and info["role"]}
 
 if __name__ == "__main__":
     import uvicorn
