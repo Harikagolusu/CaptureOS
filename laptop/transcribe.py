@@ -90,8 +90,14 @@ def _openrouter(
         prompt += f"\nPeople who often come up (use these spellings if you hear them): {', '.join(names)}."
     if language:
         prompt += f"\nMain language hint: {language}."
+    fmt = path.suffix.lstrip(".").lower()
+    if fmt not in ("wav", "mp3"):  # GPT audio only accepts wav/mp3; phones record m4a
+        mp3 = extract_audio(path)
+        try:
+            return _openrouter(mp3, language, meeting, names, intro_name)
+        finally:
+            mp3.unlink(missing_ok=True)
     audio = base64.b64encode(path.read_bytes()).decode()
-    fmt = path.suffix.lstrip(".").lower() or "m4a"
     # GPT audio mini occasionally answers "I'm sorry, I can't transcribe..." at random; then retry on Gemini.
     for model in dict.fromkeys([OPENROUTER_STT_MODEL, "google/gemini-3.8-flash"]):
         r = httpx.post(

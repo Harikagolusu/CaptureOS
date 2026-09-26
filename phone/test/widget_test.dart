@@ -28,7 +28,7 @@ void main() {
     await tester.pumpWidget(const CaptureOSApp());
     await tester.pumpAndSettle();
     expect(find.text('Hi Tej'), findsOneWidget);
-    for (final tab in ['Tasks', 'Meetings', 'Inbox', 'Field', 'Team']) {
+    for (final tab in ['Tasks', 'Meetings', 'Inbox', 'Team']) {
       expect(find.text(tab), findsWidgets);
     }
   });

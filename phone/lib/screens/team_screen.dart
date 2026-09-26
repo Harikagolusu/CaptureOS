@@ -52,15 +52,6 @@ class _TeamScreenState extends State<TeamScreen> {
     _refresh();
   }
 
-  Future<void> _changeProfile(String p) async {
-    try {
-      await api.setProfile(p);
-      setState(() {});
-    } on ApiException catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.message)));
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final text = Theme.of(context).textTheme;
@@ -83,7 +74,7 @@ class _TeamScreenState extends State<TeamScreen> {
                   contentPadding: EdgeInsets.zero,
                   leading: CircleAvatar(child: Text(api.userName.isEmpty ? '?' : api.userName[0])),
                   title: Text(api.userName, style: text.titleMedium),
-                  subtitle: Text('${api.isAdmin ? 'Admin' : 'Member'} · ${team?['name'] ?? ''}'),
+                  subtitle: Text('${api.isAdmin ? 'Admin' : 'Member'} · ${profiles[api.user?['profile']] ?? ''} · ${team?['name'] ?? ''}'),
                 ),
                 if (api.isAdmin && team?['code'] != null)
                   Card(
@@ -99,19 +90,6 @@ class _TeamScreenState extends State<TeamScreen> {
                       ),
                     ),
                   ),
-                const SizedBox(height: 12),
-                Text('I am a…', style: text.titleSmall),
-                const SizedBox(height: 6),
-                Wrap(spacing: 8, runSpacing: 8, children: [
-                  for (final e in profiles.entries)
-                    ChoiceChip(
-                      label: Text(e.value),
-                      selected: api.user?['profile'] == e.key,
-                      onSelected: (_) => _changeProfile(e.key),
-                    ),
-                ]),
-                const SizedBox(height: 4),
-                Text('The smart inbox uses this to decide what matters.', style: text.bodySmall),
                 if (api.isAdmin) ...[
                   const Divider(height: 32),
                   ListTile(

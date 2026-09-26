@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 
-import 'field_visits_screen.dart';
 import 'inbox_screen.dart';
 import 'meetings_screen.dart';
 import 'tasks_screen.dart';
@@ -25,7 +24,6 @@ class _MainShellState extends State<MainShell> {
       const TasksScreen(),
       const MeetingsScreen(),
       const InboxScreen(),
-      const FieldVisitsScreen(),
       TeamScreen(onLogout: widget.onLogout),
     ];
     return Scaffold(
@@ -37,7 +35,6 @@ class _MainShellState extends State<MainShell> {
           NavigationDestination(icon: Icon(Icons.check_circle_outline), selectedIcon: Icon(Icons.check_circle), label: 'Tasks'),
           NavigationDestination(icon: Icon(Icons.groups_outlined), selectedIcon: Icon(Icons.groups), label: 'Meetings'),
           NavigationDestination(icon: Icon(Icons.photo_library_outlined), selectedIcon: Icon(Icons.photo_library), label: 'Inbox'),
-          NavigationDestination(icon: Icon(Icons.engineering_outlined), selectedIcon: Icon(Icons.engineering), label: 'Field'),
           NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Team'),
         ],
       ),
