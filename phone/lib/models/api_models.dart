@@ -48,12 +48,24 @@ class MeetingSummary {
       : id = j['id'] as int,
         title = _s(j['title']),
         status = _s(j['status']),
+        error = _s(j['error']),
         summary = _s(j['summary']),
+        notionUrl = _s(j['notion_url']),
+        kind = _s(j['kind']),
+        input = _s(j['input']),
+        hostId = j['host_id'] as int?,
+        tasks = _list(j['tasks'], TaskItem.fromJson),
         createdAt = DateTime.tryParse(_s(j['created_at']))?.toLocal();
   final int id;
   final String title;
   final String status;
+  final String error;
   final String summary;
+  final String notionUrl;
+  final String kind; // audio | text
+  final String input; // what the user typed (text messages)
+  final int? hostId;
+  final List<TaskItem> tasks;
   final DateTime? createdAt;
   bool get processing => status != 'done' && status != 'error';
 }

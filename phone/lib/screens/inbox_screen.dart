@@ -12,6 +12,7 @@ import '../widgets/auth_image.dart';
 import '../widgets/empty_state.dart';
 import '../widgets/error_state.dart';
 import '../widgets/loading_state.dart';
+import '../services/destinations.dart';
 
 /// Smart inbox: the AI sorts gallery photos and recordings into albums and pulls out to-dos.
 class InboxScreen extends StatefulWidget {
@@ -23,14 +24,13 @@ class InboxScreen extends StatefulWidget {
 
 class _InboxScreenState extends State<InboxScreen> {
   final api = ApiClient.instance;
-  late Future<(List<Album>, List<InboxItem>)> _future = _load();
+  late Future<List<InboxItem>> _future = _load();
   String? _scanStatus;
 
-  Future<(List<Album>, List<InboxItem>)> _load() async {
-    final albums = (await api.get('/inbox/albums') as List).map((e) => Album.fromJson(Map<String, dynamic>.from(e as Map))).toList();
-    final items = (await api.get('/inbox') as List).map((e) => InboxItem.fromJson(Map<String, dynamic>.from(e as Map))).toList();
-    albums.sort((a, b) => b.count.compareTo(a.count));
-    return (albums, items);
+  /// Only photos the AI marked useful for this user (boards, notes, notices, receipts…).
+  Future<List<InboxItem>> _load() async {
+    final rows = await api.get('/inbox?kind=photo&actionable=true') as List;
+    return rows.map((e) => InboxItem.fromJson(Map<String, dynamic>.from(e as Map))).toList();
   }
 
   Future<void> _refresh() async {
@@ -80,8 +80,8 @@ class _InboxScreenState extends State<InboxScreen> {
       }
     }
     await prefs.setString('last_scan', now.toIso8601String());
-    setState(() => _scanStatus = 'Sent $sent photos — the AI is sorting them');
-    Future.delayed(const Duration(seconds: 8), _refresh);
+    setState(() => _scanStatus = 'Sent $sent photos — only the useful ones will show up here');
+    Future.delayed(const Duration(seconds: 12), _afterSort);
   }
 
   Future<void> _pickFiles() async {
@@ -91,17 +91,21 @@ class _InboxScreenState extends State<InboxScreen> {
     setState(() => _scanStatus = 'Sending ${paths.length} file(s)…');
     try {
       await api.upload('/inbox', {'files': paths});
-      setState(() => _scanStatus = 'Sent — the AI is sorting them');
-      Future.delayed(const Duration(seconds: 8), _refresh);
+      setState(() => _scanStatus = 'Sent — only the useful ones will show up here');
+      Future.delayed(const Duration(seconds: 12), _afterSort);
     } on ApiException catch (e) {
       setState(() => _scanStatus = e.message);
     }
   }
 
-  void _openAlbum(String name, List<InboxItem> items) {
-    Navigator.of(context).push(MaterialPageRoute(
-      builder: (_) => _AlbumScreen(name: name, items: items.where((i) => i.album == name).toList()),
-    ));
+  /// Refresh, and put any new dated tasks (e.g. "exam on Friday" from a notice) into the calendar.
+  Future<void> _afterSort() async {
+    if (!mounted) return;
+    await _refresh();
+    try {
+      final added = await Destinations.syncMyTasksToCalendar();
+      if (added > 0 && mounted) setState(() => _scanStatus = 'Added $added task(s) to your calendar');
+    } catch (_) {}
   }
 
   @override
@@ -109,17 +113,15 @@ class _InboxScreenState extends State<InboxScreen> {
     final text = Theme.of(context).textTheme;
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Smart inbox'),
+        title: const Text('Useful photos'),
         actions: [IconButton(tooltip: 'Add photos or recordings', icon: const Icon(Icons.add_photo_alternate_outlined), onPressed: _pickFiles)],
       ),
-      body: FutureBuilder<(List<Album>, List<InboxItem>)>(
+      body: FutureBuilder<List<InboxItem>>(
         future: _future,
         builder: (context, snap) {
-          if (snap.connectionState != ConnectionState.done) return const LoadingState(message: 'Loading inbox...');
+          if (snap.connectionState != ConnectionState.done) return const LoadingState(message: 'Loading photos...');
           if (snap.hasError) return ErrorState(message: snap.error.toString(), onRetry: _refresh);
-          final (albums, items) = snap.data!;
-          final important = items.where((i) => i.actionable).take(10).toList();
-          final pending = items.where((i) => i.status == 'queued').length;
+          final items = snap.data!;
           return RefreshIndicator(
             onRefresh: _refresh,
             child: ListView(
@@ -131,63 +133,30 @@ class _InboxScreenState extends State<InboxScreen> {
                   label: const Text("Check today's photos"),
                   style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
                 ),
-                if (_scanStatus != null || pending > 0)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text([?_scanStatus, if (pending > 0) '$pending still sorting…'].join(' · '),
-                        style: text.bodySmall),
-                  ),
-                const SizedBox(height: 8),
-                Text('Tip: photos and recordings sent to the laptop with Office Kit land here too.', style: text.bodySmall),
+                if (_scanStatus != null) Padding(padding: const EdgeInsets.only(top: 8), child: Text(_scanStatus!, style: text.bodySmall)),
+                const SizedBox(height: 6),
+                Text('Only photos that matter to you appear here — boards, notes, notices, receipts. '
+                    'Photos sent to the laptop with Office Kit are checked too.', style: text.bodySmall),
+                const SizedBox(height: 12),
                 if (items.isEmpty)
                   const Padding(
                     padding: EdgeInsets.only(top: 48),
                     child: EmptyState(
                       icon: Icons.photo_library_outlined,
-                      title: 'Nothing sorted yet',
-                      subtitle: 'Check today\'s photos, or send some from the gallery.',
+                      title: 'No useful photos yet',
+                      subtitle: "Snap a whiteboard, notice or notes, then check today's photos.",
                     ),
-                  ),
-                if (important.isNotEmpty) ...[
-                  const SizedBox(height: 20),
-                  Text('Needs attention', style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 8),
-                  for (final i in important) _ItemTile(item: i),
-                ],
-                if (albums.isNotEmpty) ...[
-                  const SizedBox(height: 20),
-                  Text('Albums', style: text.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
-                  const SizedBox(height: 8),
+                  )
+                else
                   GridView.count(
                     crossAxisCount: 2,
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
                     mainAxisSpacing: 10,
                     crossAxisSpacing: 10,
-                    children: [
-                      for (final a in albums)
-                        InkWell(
-                          onTap: () => _openAlbum(a.name, items),
-                          borderRadius: BorderRadius.circular(14),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(14),
-                            child: Stack(fit: StackFit.expand, children: [
-                              _Cover(item: items.where((i) => i.album == a.name).firstOrNull),
-                              Container(
-                                alignment: Alignment.bottomLeft,
-                                padding: const EdgeInsets.all(10),
-                                decoration: const BoxDecoration(
-                                  gradient: LinearGradient(begin: Alignment.center, end: Alignment.bottomCenter, colors: [Colors.transparent, Colors.black87]),
-                                ),
-                                child: Text('${a.name}\n${a.count} item${a.count == 1 ? '' : 's'}',
-                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
-                              ),
-                            ]),
-                          ),
-                        ),
-                    ],
+                    childAspectRatio: 0.8,
+                    children: [for (final i in items) _PhotoCard(item: i)],
                   ),
-                ],
               ],
             ),
           );
@@ -197,37 +166,33 @@ class _InboxScreenState extends State<InboxScreen> {
   }
 }
 
-class _Cover extends StatelessWidget {
-  const _Cover({required this.item});
-  final InboxItem? item;
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    if (item != null && item!.isPhoto) return AuthImage(item!.fileUrl);
-    return Container(color: scheme.secondaryContainer, child: Icon(Icons.graphic_eq, size: 48, color: scheme.onSecondaryContainer));
-  }
-}
-
-class _ItemTile extends StatelessWidget {
-  const _ItemTile({required this.item});
+class _PhotoCard extends StatelessWidget {
+  const _PhotoCard({required this.item});
   final InboxItem item;
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: ListTile(
-        leading: SizedBox(width: 48, height: 48, child: ClipRRect(borderRadius: BorderRadius.circular(8), child: _Cover(item: item))),
-        title: Text(item.title.isEmpty ? 'Sorting…' : item.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-        subtitle: Text(
-          [item.album, if (item.taskIds.isNotEmpty) '${item.taskIds.length} task${item.taskIds.length == 1 ? '' : 's'}', if (item.meetingId != null) 'meeting']
-              .where((e) => e.isNotEmpty)
-              .join(' · '),
-        ),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
         onTap: () => showModalBottomSheet(
           context: context,
           isScrollControlled: true,
           showDragHandle: true,
           builder: (_) => _ItemSheet(item: item),
         ),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(child: SizedBox(width: double.infinity, child: AuthImage(item.fileUrl))),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Text(item.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w600)),
+              Text(
+                item.taskIds.isEmpty ? item.category : '${item.taskIds.length} task${item.taskIds.length == 1 ? '' : 's'}',
+                style: Theme.of(context).textTheme.bodySmall,
+              ),
+            ]),
+          ),
+        ]),
       ),
     );
   }
@@ -273,15 +238,3 @@ class _ItemSheet extends StatelessWidget {
   }
 }
 
-class _AlbumScreen extends StatelessWidget {
-  const _AlbumScreen({required this.name, required this.items});
-  final String name;
-  final List<InboxItem> items;
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(name)),
-      body: ListView(padding: const EdgeInsets.all(12), children: [for (final i in items) _ItemTile(item: i)]),
-    );
-  }
-}

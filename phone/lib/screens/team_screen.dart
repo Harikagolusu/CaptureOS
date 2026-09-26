@@ -127,6 +127,7 @@ class _TeamScreenState extends State<TeamScreen> {
                 OutlinedButton.icon(
                   onPressed: () async {
                     await api.logout();
+                    if (context.mounted) Navigator.of(context).popUntil((r) => r.isFirst);
                     widget.onLogout();
                   },
                   icon: const Icon(Icons.logout),

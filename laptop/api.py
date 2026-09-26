@@ -161,6 +161,26 @@ def add_member(body: AddMember, admin: User = Depends(admin_user)):
 
 # ---------- meetings ----------
 
+class TextNote(BaseModel):
+    text: str
+    title: str = ""
+
+
+@router.post("/meetings/text")
+def text_note(body: TextNote, background: BackgroundTasks, user: User = Depends(current_user)):
+    """A typed message to the assistant ("remind Kiran to send the invoice Friday"). Same pipeline, no audio."""
+    if not body.text.strip():
+        raise HTTPException(422, "Empty message")
+    with session() as s:
+        m = Meeting(team_id=user.team_id, host_id=user.id, title=body.title, transcript=f"{user.name}: {body.text.strip()}")
+        s.add(m)
+        s.commit()
+        s.refresh(m)
+        meeting_id = m.id
+    background.add_task(process_meeting, meeting_id)
+    return {"id": meeting_id, "status": "uploaded"}
+
+
 @router.post("/meetings")
 async def upload_meeting(
     background: BackgroundTasks,
@@ -204,7 +224,20 @@ def _task_out(t: Task) -> dict:
 def list_meetings(user: User = Depends(current_user)):
     with session() as s:
         rows = s.exec(select(Meeting).where(Meeting.team_id == user.team_id).order_by(Meeting.created_at.desc())).all()
-        return [{"id": m.id, "title": m.title, "status": m.status, "created_at": m.created_at, "summary": m.summary} for m in rows]
+        tasks: dict[int, list[dict]] = {}
+        for t in s.exec(select(Task).where(Task.team_id == user.team_id, Task.meeting_id != None)):  # noqa: E711
+            tasks.setdefault(t.meeting_id, []).append(_task_out(t))
+        return [
+            {
+                "id": m.id, "title": m.title, "status": m.status, "error": m.error, "created_at": m.created_at,
+                "summary": m.summary, "notion_url": m.notion_url,
+                "kind": "audio" if m.audio_path else "text",
+                "input": "" if m.audio_path else m.transcript.split(": ", 1)[-1],
+                "host_id": m.host_id,
+                "tasks": tasks.get(m.id, []),
+            }
+            for m in rows
+        ]
 
 
 @router.get("/meetings/{meeting_id}")
