@@ -1,0 +1,36 @@
+# Flutter / Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+build/
+.idea/
+*.iml
+*.g.dart
+*.freezed.dart
+
+# Android
+local.properties
+*.keystore
+*.jks
+/captureos_phone/android/app/google-services.json
+
+# Python / FastAPI
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+.env
+.pytest_cache/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Media / local queue (do not commit field evidence)
+*.jpg
+*.mp3
+*.wav
+*.m4a
+queue_data/
