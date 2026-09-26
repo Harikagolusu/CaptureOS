@@ -29,8 +29,9 @@ class CaptureTask : CustomTask {
       category = Category.LLM,
       icon = Icons.Outlined.Mic,
       description =
-        "Record a meeting (Telugu, Hindi, English) or type a note. Gemma runs on your phone, finds " +
-          "who does what by when, saves the tasks and reminds you — fully offline.",
+        "Record a meeting (Telugu, Hindi, English) or use the demo script. Gemma runs on your phone, " +
+          "turns it into structured decisions and action items, and shows a QR code. Teammates scan it " +
+          "and each sees only their own tasks — fully offline.",
       shortDescription = "Meetings → tasks → reminders, offline",
       models = mutableListOf(),
       // Picked from the model catalogue; they take audio input.

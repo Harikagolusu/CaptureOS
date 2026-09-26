@@ -68,6 +68,30 @@ class CapturePipeline(private val context: Context, private val model: Model) {
     return parts.joinToString(" ")
   }
 
+  /** Extracts a meeting transcript into the CaptureOS JSON schema (for QR handoff). */
+  suspend fun extractMeeting(transcript: String, teamCode: String): MeetingRecord {
+    LlmChatModelHelper.resetConversation(model = model, supportAudio = true, systemInstruction = null)
+    val raw =
+      ask(
+        listOf(
+          Content.Text(
+            captureOsJsonSchemaInstruction + "\n\n" +
+              "team_code is \"$teamCode\".\n\n" +
+              "Transcript:\n$transcript"
+          )
+        )
+      )
+    return parseMeetingJson(extractJsonObject(raw))
+  }
+
+  private fun extractJsonObject(raw: String): String {
+    var s = raw.trim().removePrefix("```json").removePrefix("```").trim()
+    val start = s.indexOf('{')
+    val end = s.lastIndexOf('}')
+    if (start >= 0 && end > start) s = s.substring(start, end + 1)
+    return s
+  }
+
   /** Reads a transcript or typed note, lets the model call createTask, and returns the summary. */
   suspend fun extract(text: String, source: String): CaptureResult {
     val found = mutableListOf<CapturedTask>()

@@ -133,6 +133,8 @@ dependencies {
   implementation(libs.ktor.client.android)
   implementation(libs.ktor.client.core)
   implementation(libs.tasks.vision)
+  implementation(libs.zxing.core)
+  implementation(libs.mlkit.barcode.scanning)
 }
 
 configurations.all {
