@@ -51,6 +51,7 @@ def main() -> None:
         "properties": {
             "Name": {"title": {}},
             "Owner": {"rich_text": {}},
+            "Assignee": {"people": {}},
             "Due": {"date": {}},
             "Priority": options("high", "medium", "low"),
             "Status": options("To do", "Doing", "Done"),

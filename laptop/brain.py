@@ -25,6 +25,8 @@ is who from names people use when addressing each other, and use real names as o
 Conversation cues identify voices: when someone is addressed by name with a question or request \
 ("Kiran, what's the update?"), the next different voice that answers is most likely that person, and \
 the same voice label keeps that name for the rest of the meeting unless the context contradicts it.
+The voice that opens the meeting and asks others for updates is the meeting lead; if the context \
+names the lead or the app user, use that name, otherwise call them "meeting lead" in the speaker map.
 People are whoever the transcript names; there is no fixed team list, and new names are normal. \
 If a name matches someone from earlier meetings (listed in the context), reuse that exact spelling.
 
@@ -55,6 +57,7 @@ def run_brain(
     transcript: str, title: str | None = None, source: str = "cloud", speakers_hint: str | None = None
 ) -> dict:
     actions: list[dict] = []
+    assignees = {} if DRY_RUN else notion.learned_assignees()
 
     def record(tool: str, args: dict, run) -> str:
         entry = {"tool": tool, "args": args, "status": "dry-run" if DRY_RUN else "done"}
@@ -78,7 +81,10 @@ def run_brain(
             due: Due date as YYYY-MM-DD, or empty if none was mentioned.
         """
         args = {"title": title, "owner": owner, "priority": priority, "due": due or None}
-        return record("create_task", args, lambda: notion.create_task(**args, source=source))
+        assignee_id = assignees.get(owner.strip().lower())
+        return record(
+            "create_task", args, lambda: notion.create_task(**args, source=source, assignee_id=assignee_id)
+        )
 
     @beta_tool
     def create_note(

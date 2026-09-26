@@ -22,24 +22,63 @@ def _post(path: str, body: dict) -> dict:
     return r.json()
 
 
+def _recent_tasks(limit: int = 100) -> list[dict]:
+    data = _post(
+        f"/databases/{NOTION_TASKS_DB}/query",
+        {"page_size": limit, "sorts": [{"timestamp": "created_time", "direction": "descending"}]},
+    )
+    return data.get("results", [])
+
+
+def _owner(page: dict) -> str:
+    return "".join(t["plain_text"] for t in page["properties"].get("Owner", {}).get("rich_text", [])).strip()
+
+
 def known_people(limit: int = 100) -> list[str]:
     """Distinct task owners already in the tasks DB, most recent first. Never raises."""
     try:
-        data = _post(
-            f"/databases/{NOTION_TASKS_DB}/query",
-            {"page_size": limit, "sorts": [{"timestamp": "created_time", "direction": "descending"}]},
-        )
+        pages = _recent_tasks(limit)
     except Exception:
         return []
     seen: dict[str, None] = {}
-    for page in data.get("results", []):
-        owner = "".join(t["plain_text"] for t in page["properties"].get("Owner", {}).get("rich_text", [])).strip()
+    for page in pages:
+        owner = _owner(page)
         if owner and owner.lower() != "unassigned":
             seen.setdefault(owner)
     return list(seen)
 
 
-def create_task(title: str, owner: str, due: str | None, priority: str, source: str) -> str:
+def learned_assignees(limit: int = 100) -> dict[str, str]:
+    """Owner name (lowercase) -> Notion user id, learned from tasks where someone set Assignee.
+
+    Personal access tokens can't list workspace users, so a teammate claims one of their tasks
+    once (sets Assignee = themselves) and every later task for that name is assigned automatically.
+    """
+    try:
+        pages = _recent_tasks(limit)
+    except Exception:
+        return {}
+    learned: dict[str, str] = {}
+    for page in pages:
+        people = page["properties"].get("Assignee", {}).get("people", [])
+        owner = _owner(page).lower()
+        if len(people) == 1 and owner and owner != "unassigned":
+            learned.setdefault(owner, people[0]["id"])
+    return learned
+
+
+def ensure_assignee_column() -> None:
+    """Add the Assignee (Notion person) column to the tasks DB if it's missing."""
+    r = httpx.patch(
+        f"{API}/databases/{NOTION_TASKS_DB}", headers=HEADERS, json={"properties": {"Assignee": {"people": {}}}}, timeout=20
+    )
+    if r.status_code >= 400:
+        raise RuntimeError(f"Notion {r.status_code}: {r.text[:300]}")
+
+
+def create_task(
+    title: str, owner: str, due: str | None, priority: str, source: str, assignee_id: str | None = None
+) -> str:
     props = {
         "Name": {"title": _text(title)},
         "Owner": {"rich_text": _text(owner)},
@@ -49,6 +88,8 @@ def create_task(title: str, owner: str, due: str | None, priority: str, source: 
     }
     if due:
         props["Due"] = {"date": {"start": due}}
+    if assignee_id:
+        props["Assignee"] = {"people": [{"id": assignee_id}]}
     page = _post("/pages", {"parent": {"database_id": NOTION_TASKS_DB}, "properties": props})
     return page["url"]
 
