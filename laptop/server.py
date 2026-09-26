@@ -9,6 +9,7 @@ from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel
 
+import vivo_notes
 from brain import run_brain
 from config import CLAUDE_MODEL, DATA, DRY_RUN, TRANSCRIBE_PROVIDER
 from transcribe import transcribe
@@ -53,7 +54,8 @@ class ProcessRequest(BaseModel):
 
 @app.get("/health")
 def health():
-    return {"ok": True, "ip": lan_ip(), "claude": CLAUDE_MODEL, "transcribe": TRANSCRIBE_PROVIDER, "notion_dry_run": DRY_RUN}
+    return {"ok": True, "ip": lan_ip(), "claude": CLAUDE_MODEL, "transcribe": TRANSCRIBE_PROVIDER, "notion_dry_run": DRY_RUN,
+            "vivo_notes": {"token": vivo_notes.enabled(), "service": vivo_notes.health()}}
 
 
 @app.post("/transcribe")

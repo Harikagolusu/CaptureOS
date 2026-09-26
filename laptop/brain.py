@@ -7,6 +7,7 @@ import anthropic
 from anthropic import beta_tool
 
 import notion
+import vivo_notes
 from config import CLAUDE_MODEL, DRY_RUN, TEAM_ROSTER, USE_OPENROUTER
 
 if USE_OPENROUTER:
@@ -104,4 +105,27 @@ def run_brain(transcript: str, title: str | None = None, source: str = "cloud") 
         summary = "Request declined by the model."
     else:
         summary = next((b.text for b in (final.content if final else []) if b.type == "text"), "")
-    return {"summary": summary, "actions": actions, "dry_run": DRY_RUN, "model": CLAUDE_MODEL}
+    return {
+        "summary": summary,
+        "actions": actions,
+        "vivo_note": export_vivo_note(actions, transcript, title),
+        "dry_run": DRY_RUN,
+        "model": CLAUDE_MODEL,
+    }
+
+
+def export_vivo_note(actions: list[dict], transcript: str, title: str | None) -> dict:
+    """Mirror the whole meeting into vivo Office Notes so it syncs to the phone."""
+    if not vivo_notes.enabled():
+        return {"status": "skipped", "reason": "VIVO_NOTES_TOKEN not set"}
+    note = next((a["args"] for a in actions if a["tool"] == "create_note"), {})
+    tasks = [a["args"] for a in actions if a["tool"] == "create_task"]
+    questions = [a["args"]["question"] for a in actions if a["tool"] == "ask_user"]
+    body = vivo_notes.meeting_html(
+        note.get("summary", ""), note.get("decisions", []), tasks, questions, transcript
+    )
+    try:
+        note_id = vivo_notes.create_note(note.get("title") or title or "Meeting", body)
+        return {"status": "done", "id": note_id}
+    except Exception as e:
+        return {"status": "error", "error": str(e)}

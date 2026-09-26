@@ -33,3 +33,14 @@ curl -X POST localhost:8000/meeting -F audio=@my_recording.m4a -F language=te
  "status": "done | dry-run | error | pending", "url": "https://notion.so/..."}
 ```
 `ask_user` actions have `status: "pending"` and `args.question`; the app shows them as questions.
+
+## Destinations
+**Notion** (tasks DB + meeting notes page)
+1. notion.so/profile/integrations → New internal integration → copy the secret into `.env` as `NOTION_TOKEN=`.
+2. Create an empty page (e.g. "CaptureOS"), then ••• → Connections → add the integration.
+3. `.venv/Scripts/python setup_notion.py <that page's URL>`: creates the "CaptureOS Tasks" DB + "CaptureOS Meeting Notes" page and saves their IDs to `.env`. Dry-run turns off automatically.
+
+**vivo Office Kit Notes** (syncs to the iQOO phone's Notes app)
+- Uses Office Kit's local third-party Notes API (`127.0.0.1:9200/third-party`, shipped as the `office-suite-notes` skill in the Office Kit install).
+- Copy the token from the Office Kit app into `.env` as `VIVO_NOTES_TOKEN=`. `/health` shows whether the service is up and the token is set.
+- Every processed meeting becomes one note: summary, action items, decisions, open questions, transcript.

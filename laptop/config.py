@@ -27,6 +27,8 @@ SARVAM_MODE = os.environ.get("SARVAM_MODE", "transcribe")
 NOTION_TOKEN = os.environ.get("NOTION_TOKEN", "")
 NOTION_TASKS_DB = os.environ.get("NOTION_TASKS_DB", "")
 NOTION_NOTES_PAGE = os.environ.get("NOTION_NOTES_PAGE", "")
+VIVO_NOTES_TOKEN = os.environ.get("VIVO_NOTES_TOKEN", "")
+VIVO_NOTES_PORT = os.environ.get("VIVO_NOTES_PORT", "9200")
 TEAM_ROSTER = [n.strip() for n in os.environ.get("TEAM_ROSTER", "").split(",") if n.strip()]
 
 # No Notion credentials -> tools record what they would do instead of calling Notion.
