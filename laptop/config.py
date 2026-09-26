@@ -3,8 +3,8 @@ import os
 from pathlib import Path
 
 BASE = Path(__file__).parent
-DATA = BASE / "data"
-DATA.mkdir(exist_ok=True)
+DATA = Path(os.environ.get("DATA_DIR", str(BASE / "data")))  # cloud: a mounted volume, e.g. /data
+DATA.mkdir(parents=True, exist_ok=True)
 
 _env = BASE / ".env"
 if _env.exists():

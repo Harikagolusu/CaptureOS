@@ -52,3 +52,20 @@ curl -X POST localhost:8000/meeting -F audio=@my_recording.m4a -F language=te
 - **Everyone else:** identified from the conversation: "Kiran, what's the update?" → the next voice that answers is Kiran. No setup for teammates.
 - Names already in Notion are passed as spelling hints, so the same person keeps the same spelling.
 - The meeting note shows attendees, which voice is who, and **Updates by person** (done / next / blocked) for the manager.
+
+## Cloud (Railway), when you need the app without the laptop
+```bash
+cd laptop
+railway init -n captureos            # new project
+railway up --detach                  # builds the Dockerfile, deploys
+railway volume add --mount-path /data
+railway variables --set OPENROUTER_API_KEY=... --set NOTION_TOKEN=... --set NOTION_TASKS_DB=... --set NOTION_NOTES_PAGE=...
+railway domain                       # public https URL -> put it in the app's Server address
+```
+Data (SQLite DB, recordings, photos) lives on the `/data` volume. The Office Kit watcher and
+`record_laptop.py` only run on the laptop.
+
+## Record a call running on the laptop
+`.venv/Scripts/python record_laptop.py` records the computer's sound (the other people) + your mic,
+press Enter to stop; the mp3 lands in the Office Kit folder and the running server processes it.
+The laptop must not be muted (mute silences the capture); headphones are fine.
