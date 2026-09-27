@@ -316,15 +316,32 @@ fun DictoCaptureScreen(model: Model?, bottomPadding: Dp) {
 
 private val TASK_TYPES = listOf("all" to "All", "qr" to "QR", "dicto" to "Dictation")
 
-/** Tasks page: every task from QR check-ins and dictation, filterable by where it came from. */
+private val TASK_CATEGORIES =
+  listOf(
+    "all" to "All",
+    "to_do" to "To-Do",
+    "casual" to "Casual",
+    "ideas" to "Idea",
+    "personal" to "Personal",
+  )
+
+/** The dictation categories of the entry this task came from (empty for QR tasks). */
+private fun rowCategories(row: TaskRow): List<String> =
+  CaptureDb.state.dicto.firstOrNull { it.id == row.entryId }?.categories ?: emptyList()
+
+/** Tasks page: every task from QR check-ins and dictation, filterable by source and dictation type. */
 @Composable
 fun TasksScreen(bottomPadding: Dp) {
   val context = LocalContext.current
   CaptureDb.load(context)
   var type by remember { mutableStateOf("all") }
+  var category by remember { mutableStateOf("all") }
   var expanded by remember { mutableStateOf<String?>(null) }
 
-  val rows = CaptureDb.taskRows().filter { type == "all" || it.type == type }
+  val rows =
+    CaptureDb.taskRows()
+      .filter { type == "all" || it.type == type }
+      .filter { category == "all" || (it.type == "dicto" && rowCategories(it).contains(category)) }
   val pending = rows.filter { !it.task.done }
   val completed = rows.filter { it.task.done }
 
@@ -347,6 +364,23 @@ fun TasksScreen(bottomPadding: Dp) {
               .clip(RoundedCornerShape(8.dp))
               .background(if (selected) CaptureColors.Navy else CaptureColors.Hairline)
               .clickable { type = key }
+              .padding(horizontal = 12.dp, vertical = 6.dp),
+        )
+      }
+    }
+    Spacer(Modifier.height(8.dp))
+    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+      TASK_CATEGORIES.forEach { (key, label) ->
+        val selected = category == key
+        Text(
+          label,
+          style = MaterialTheme.typography.labelMedium,
+          color = if (selected) CaptureColors.Paper else CaptureColors.Neutral,
+          modifier =
+            Modifier
+              .clip(RoundedCornerShape(8.dp))
+              .background(if (selected) CaptureColors.Navy else CaptureColors.Hairline)
+              .clickable { category = key }
               .padding(horizontal = 12.dp, vertical = 6.dp),
         )
       }

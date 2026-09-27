@@ -21,11 +21,13 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Matrix
+import android.hardware.camera2.CaptureRequest
 import android.util.Log
 import android.util.Size
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.camera.camera2.interop.Camera2Interop
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageAnalysis
 import androidx.camera.core.ImageProxy
@@ -201,11 +203,21 @@ private suspend fun startCamera(
         )
       )
       .build()
-  val imageAnalysis =
+  val analysisBuilder =
     ImageAnalysis.Builder()
       .setResolutionSelector(resolutionSelector)
       .setOutputImageFormat(outputImageFormat)
       .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+  // Keep the lens focusing continuously, otherwise close-up QR codes stay blurred.
+  runCatching {
+    Camera2Interop.Extender(analysisBuilder)
+      .setCaptureRequestOption(
+        CaptureRequest.CONTROL_AF_MODE,
+        CaptureRequest.CONTROL_AF_MODE_CONTINUOUS_PICTURE,
+      )
+  }
+  val imageAnalysis =
+    analysisBuilder
       .build()
       .also {
         it.setAnalyzer(Dispatchers.Default.asExecutor()) { imageProxy ->

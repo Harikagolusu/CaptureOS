@@ -113,6 +113,7 @@ fun MeetingScanScreen(onClose: () -> Unit) {
           LiveCameraView(
             cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA,
             isPaused = handled,
+            preferredSize = 1280,
             modifier = Modifier.fillMaxSize(),
             onBitmap = { bitmap: Bitmap, imageProxy ->
               if (handled) {

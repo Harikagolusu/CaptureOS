@@ -167,7 +167,7 @@ class CapturePipeline(private val context: Context, private val model: Model) {
       You are CaptureOS's personal note assistant. Read the note below (a voice transcript, and a
       photo if one is attached) and return ONLY a JSON object:
       {
-        "categories": ["to_do", "completed", "ideas", "mistakes"],
+        "categories": ["to_do", "casual", "ideas", "personal"],
         "key_points": ["short factual takeaway"],
         "formatted": "a clean, well-formatted rewrite of the note",
         "tasks": [{"title": "imperative task", "priority": "high|medium|low", "due_date": "YYYY-MM-DD or empty"}],
@@ -176,9 +176,9 @@ class CapturePipeline(private val context: Context, private val model: Model) {
 
       Categories are multi-label — include EVERY bucket that applies, in this vocabulary only:
       - "to_do": things the user still has to do.
-      - "completed": things the user already did (past tense).
+      - "casual": everyday chit-chat, quick observations, small talk, anything worth keeping but not actionable.
       - "ideas": brainstorming, thoughts, plans, things seen in the photo.
-      - "mistakes": errors, regrets, reflections, things that went wrong.
+      - "personal": personal matters — health, family, feelings, private reminders.
       Use [] if none apply. Never invent a bucket name.
 
       Rules: 1-4 key points, sentence case, no markdown. Only include a task if the user actually
@@ -197,7 +197,7 @@ class CapturePipeline(private val context: Context, private val model: Model) {
     val raw = ask(contents)
     val parsed =
       runCatching { meetingJsonGson.fromJson(extractJsonObject(raw), DictoJson::class.java) }.getOrNull() ?: DictoJson()
-    val allowed = setOf("to_do", "completed", "ideas", "mistakes")
+    val allowed = setOf("to_do", "casual", "ideas", "personal")
     val categories = parsed.categories.map { it.trim().lowercase() }.filter { it in allowed }.distinct()
     val tasks =
       parsed.tasks.filter { it.title.isNotBlank() }.map {
