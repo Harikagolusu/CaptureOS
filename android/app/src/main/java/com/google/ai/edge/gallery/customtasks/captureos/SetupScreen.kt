@@ -1,7 +1,7 @@
 package com.google.ai.edge.gallery.customtasks.captureos
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -9,10 +9,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -32,50 +33,80 @@ fun SetupScreen(onDone: () -> Unit) {
   var role by remember { mutableStateOf("employee") }
 
   Column(
-    Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(24.dp),
-    horizontalAlignment = Alignment.CenterHorizontally,
+    Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 28.dp),
   ) {
+    Wordmark()
+    Spacer(Modifier.height(6.dp))
+    Text("One phone. Two outputs.", style = MaterialTheme.typography.bodyMedium, color = CaptureColors.Neutral)
     Spacer(Modifier.height(32.dp))
-    Text("CaptureOS setup", style = MaterialTheme.typography.headlineMedium)
-    Spacer(Modifier.height(8.dp))
-    Text(
-      "Stored only on this phone. No server, no account.",
-      style = MaterialTheme.typography.bodySmall,
-    )
-    Spacer(Modifier.height(24.dp))
+
+    FieldLabel("Team code")
     OutlinedTextField(
       value = team,
       onValueChange = { team = it },
       modifier = Modifier.fillMaxWidth(),
-      label = { Text("Team code") },
       singleLine = true,
+      placeholder = { Text("TEAM2026", color = CaptureColors.Neutral) },
+      shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+      colors = fieldColors(),
     )
-    Spacer(Modifier.height(12.dp))
+    Spacer(Modifier.height(18.dp))
+
+    FieldLabel("Your name")
     OutlinedTextField(
       value = name,
       onValueChange = { name = it },
       modifier = Modifier.fillMaxWidth(),
-      label = { Text("Your name") },
       singleLine = true,
+      placeholder = { Text("Priya", color = CaptureColors.Neutral) },
+      shape = androidx.compose.foundation.shape.RoundedCornerShape(8.dp),
+      colors = fieldColors(),
     )
-    Spacer(Modifier.height(16.dp))
-    Text("I am the…", style = MaterialTheme.typography.titleMedium)
-    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-      listOf("admin" to "Admin — records the meeting", "employee" to "Employee — scans the QR").forEach { (v, label) ->
-        androidx.compose.foundation.layout.Row(verticalAlignment = Alignment.CenterVertically) {
-          RadioButton(selected = role == v, onClick = { role = v })
-          Text(label)
-        }
-      }
+    Spacer(Modifier.height(22.dp))
+
+    FieldLabel("I am a…")
+    Column {
+      RoleOption("Admin", role == "admin") { role = "admin" }
+      RoleOption("Employee", role == "employee") { role = "employee" }
     }
-    Spacer(Modifier.height(24.dp))
-    Button(
-      onClick = {
-        CaptureStore.save(context, SetupProfile(team.trim(), name.trim(), role))
-        onDone()
-      },
-      enabled = team.isNotBlank() && name.isNotBlank(),
-      modifier = Modifier.fillMaxWidth(),
-    ) { Text("Continue") }
+
+    Spacer(Modifier.height(32.dp))
+    PrimaryButton("Continue", onClick = {
+      CaptureStore.save(context, SetupProfile(team.trim(), name.trim(), role))
+      onDone()
+    }, enabled = team.isNotBlank() && name.isNotBlank())
+    Spacer(Modifier.height(12.dp))
+    Text(
+      "Stored on this phone only. No server, no account.",
+      style = MaterialTheme.typography.bodySmall,
+      color = CaptureColors.Neutral,
+    )
   }
 }
+
+@Composable
+private fun FieldLabel(text: String) {
+  Text(text, style = MaterialTheme.typography.labelMedium, color = CaptureColors.Neutral, modifier = Modifier.padding(bottom = 6.dp))
+}
+
+@Composable
+private fun RoleOption(label: String, selected: Boolean, onSelect: () -> Unit) {
+  Row(verticalAlignment = Alignment.CenterVertically) {
+    RadioButton(
+      selected = selected,
+      onClick = onSelect,
+      colors = RadioButtonDefaults.colors(selectedColor = CaptureColors.Navy, unselectedColor = CaptureColors.Neutral),
+    )
+    Text(label, style = MaterialTheme.typography.bodyLarge, color = CaptureColors.Ink)
+  }
+}
+
+@Composable
+private fun fieldColors() =
+  OutlinedTextFieldDefaults.colors(
+    focusedBorderColor = CaptureColors.Navy,
+    unfocusedBorderColor = CaptureColors.Hairline,
+    cursorColor = CaptureColors.Navy,
+    focusedTextColor = CaptureColors.Ink,
+    unfocusedTextColor = CaptureColors.Ink,
+  )

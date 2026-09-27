@@ -66,6 +66,8 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
 import com.google.ai.edge.gallery.GalleryEvent
+import com.google.ai.edge.gallery.customtasks.captureos.CAPTURE_OS_TASK_ID
+import com.google.ai.edge.gallery.customtasks.captureos.ModelSetupScreen
 import com.google.ai.edge.gallery.customtasks.common.CustomTaskData
 import com.google.ai.edge.gallery.customtasks.common.CustomTaskDataForBuiltinTask
 import com.google.ai.edge.gallery.data.Model
@@ -88,6 +90,7 @@ import kotlinx.coroutines.launch
 
 private const val TAG = "AGGalleryNavGraph"
 private const val ROUTE_HOMESCREEN = "homepage"
+private const val ROUTE_CAPTUREOS = "captureos_home"
 private const val ROUTE_MODEL_LIST = "model_list"
 private const val ROUTE_MODEL = "route_model"
 private const val ROUTE_BENCHMARK = "benchmark"
@@ -180,7 +183,7 @@ fun GalleryNavHost(
 
   NavHost(
     navController = navController,
-    startDestination = ROUTE_HOMESCREEN,
+    startDestination = ROUTE_CAPTUREOS,
     enterTransition = { EnterTransition.None },
     exitTransition = { ExitTransition.None },
   ) {
@@ -203,6 +206,52 @@ fun GalleryNavHost(
         onNotificationsClicked = { navController.navigate(ROUTE_NOTIFICATIONS) },
         modifier = modifier,
       )
+    }
+
+    // CaptureOS is the app: open straight into the CaptureOS UI, no Gallery chrome.
+    composable(route = ROUTE_CAPTUREOS) {
+      val mmState by modelManagerViewModel.uiState.collectAsState()
+      val captureTask = modelManagerViewModel.getCustomTaskByTaskId(id = CAPTURE_OS_TASK_ID)
+      val models = captureTask?.task?.models.orEmpty()
+      val initialModel =
+        models.firstOrNull { mmState.modelDownloadStatus[it.name]?.status == ModelDownloadStatusType.SUCCEEDED }
+          ?: models.firstOrNull()
+      if (captureTask != null && initialModel != null) {
+        val downloadStatus = mmState.modelDownloadStatus[initialModel.name]
+        if (downloadStatus?.status == ModelDownloadStatusType.SUCCEEDED) {
+          LaunchedEffect(initialModel.name) { modelManagerViewModel.selectModel(initialModel) }
+          var disableAppBarControls by remember { mutableStateOf(false) }
+          var hideTopBar by remember { mutableStateOf(true) }
+          var customNavigateUpCallback by remember { mutableStateOf<(() -> Unit)?>(null) }
+          CustomTaskScreen(
+            task = captureTask.task,
+            initialModel = initialModel,
+            modelManagerViewModel = modelManagerViewModel,
+            disableAppBarControls = disableAppBarControls,
+            hideTopBar = hideTopBar,
+            useThemeColor = true,
+            onNavigateUp = {},
+          ) { bottomPadding ->
+            captureTask.MainScreen(
+              data =
+                CustomTaskData(
+                  modelManagerViewModel = modelManagerViewModel,
+                  bottomPadding = bottomPadding,
+                  setAppBarControlsDisabled = { disableAppBarControls = it },
+                  setTopBarVisible = { hideTopBar = !it },
+                  setCustomNavigateUpCallback = { customNavigateUpCallback = it },
+                )
+            )
+          }
+        } else {
+          ModelSetupScreen(
+            displayName = initialModel.displayName.ifBlank { initialModel.name },
+            status = downloadStatus,
+            onDownload = { modelManagerViewModel.downloadModel(task = captureTask.task, model = initialModel) },
+            onCancel = { modelManagerViewModel.cancelDownloadModel(model = initialModel) },
+          )
+        }
+      }
     }
 
     // Model list.

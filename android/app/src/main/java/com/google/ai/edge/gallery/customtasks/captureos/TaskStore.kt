@@ -14,7 +14,8 @@ data class CapturedTask(
   val dueDate: String = "", // yyyy-MM-dd or ""
   val dueTime: String = "", // HH:mm or ""
   val priority: String = "medium",
-  val source: String = "", // "meeting" | "note"
+  val source: String = "", // "meeting" | "note" | "dicto" | "qr"
+  val sourceId: String = "", // the meeting or dicto entry this task came from
   val createdAt: Long = System.currentTimeMillis(),
   var done: Boolean = false,
   var reminderAt: Long = 0L, // epoch millis of the scheduled notification, 0 = none

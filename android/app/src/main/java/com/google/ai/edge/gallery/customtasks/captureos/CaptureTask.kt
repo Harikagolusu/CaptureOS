@@ -29,9 +29,9 @@ class CaptureTask : CustomTask {
       category = Category.LLM,
       icon = Icons.Outlined.Mic,
       description =
-        "Record a meeting (Telugu, Hindi, English) or use the demo script. Gemma runs on your phone, " +
-          "turns it into structured decisions and action items, and shows a QR code. Teammates scan it " +
-          "and each sees only their own tasks — fully offline.",
+        "Capture, Meetings, Diary. Record a meeting (Telugu, Hindi, English) and Gemma turns it into " +
+          "decisions and action items shown as a QR code; teammates scan it and each sees only their " +
+          "own tasks. Or record quick diary notes that become key points and a to-do list — fully offline.",
       shortDescription = "Meetings → tasks → reminders, offline",
       models = mutableListOf(),
       // Picked from the model catalogue; they take audio input.
@@ -52,7 +52,7 @@ class CaptureTask : CustomTask {
       context = context,
       model = model,
       taskId = task.id,
-      supportImage = false,
+      supportImage = true,
       supportAudio = true,
       onDone = onDone,
     )

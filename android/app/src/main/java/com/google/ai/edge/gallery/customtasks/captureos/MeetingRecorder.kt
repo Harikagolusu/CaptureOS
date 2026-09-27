@@ -25,6 +25,10 @@ class MeetingRecorder {
   @Volatile var level: Float = 0f
     private set
 
+  /** Raw 16 kHz mono PCM of the last recording, for persisting the original audio. */
+  @Volatile var lastPcm: ByteArray = ByteArray(0)
+    private set
+
   val seconds: Int
     get() = pcm.size() / BYTES_PER_SECOND
 
@@ -73,6 +77,7 @@ class MeetingRecorder {
     }
     record = null
     val all = synchronized(pcm) { pcm.toByteArray() }
+    lastPcm = all
     return splitToWavClips(all)
   }
 
@@ -101,7 +106,10 @@ fun splitToWavClips(pcm: ByteArray, chunkSeconds: Int = CHUNK_SECONDS): List<Byt
   return clips
 }
 
-private fun wav(pcm: ByteArray): ByteArray {
+private fun wav(pcm: ByteArray): ByteArray = toWavBytes(pcm)
+
+/** Wraps raw PCM in a WAV header (16 kHz, mono, 16-bit). */
+fun toWavBytes(pcm: ByteArray): ByteArray {
   val header =
     ByteBuffer.allocate(44).order(ByteOrder.LITTLE_ENDIAN).apply {
       put("RIFF".toByteArray())
