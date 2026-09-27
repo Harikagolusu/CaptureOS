@@ -180,7 +180,9 @@ fun AdminScreen(profile: SetupProfile, model: Model?, bottomPadding: Dp, onScan:
   when (val s = stage) {
     is AdminStage.Qr ->
       QrDisplay(
+        context = context,
         meeting = s.meeting,
+        profile = profile,
         onBack = {
           stage = AdminStage.Idle
           meetingId = null
@@ -307,9 +309,16 @@ private fun ErrorState(message: String, onRetry: () -> Unit, bottomPadding: Dp) 
 }
 
 @Composable
-private fun QrDisplay(meeting: MeetingRecord, onBack: () -> Unit) {
-  val context = LocalContext.current
-  val qr: Bitmap = remember(meeting) { QrCodec.meetingJsonToQr(meeting) }
+private fun QrDisplay(context: android.content.Context, meeting: MeetingRecord, profile: SetupProfile, onBack: () -> Unit) {
+  val qr: Bitmap =
+    remember(meeting) {
+      QrCodec.meetingJsonToQr(
+        meeting.copy(
+          hostName = meeting.hostName.ifBlank { profile.name },
+          recordedAt = if (meeting.recordedAt > 0L) meeting.recordedAt else System.currentTimeMillis(),
+        )
+      )
+    }
   Column(
     Modifier.fillMaxSize().background(CaptureColors.Navy).padding(20.dp),
     horizontalAlignment = Alignment.CenterHorizontally,

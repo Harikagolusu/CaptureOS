@@ -181,6 +181,8 @@ private fun MeetingRow(meeting: MeetingArchive, expanded: Boolean, onToggle: () 
                     MeetingRecord(
                       teamCode = meeting.teamCode,
                       meetingTitle = meeting.meetingTitle,
+                      hostName = meeting.hostName,
+                      recordedAt = meeting.createdAt,
                       summary = meeting.summary,
                       decisions = meeting.decisions,
                       actionItems = meeting.actionItems,

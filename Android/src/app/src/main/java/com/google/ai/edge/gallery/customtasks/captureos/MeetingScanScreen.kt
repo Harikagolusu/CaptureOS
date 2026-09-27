@@ -6,6 +6,7 @@ import androidx.camera.core.CameraSelector
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -28,17 +29,21 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.google.ai.edge.gallery.ui.common.LiveCameraView
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import java.util.UUID
 
 private sealed interface CheckInStage {
   data object NameEntry : CheckInStage
   data object Scanning : CheckInStage
-  data class Result(val meeting: MeetingRecord, val assigned: List<ActionItem>) : CheckInStage
+  data class Result(val meeting: MeetingRecord, val archive: MeetingArchive, val assigned: List<ActionItem>) : CheckInStage
   data class Error(val message: String) : CheckInStage
 }
 
@@ -113,7 +118,7 @@ fun MeetingScanScreen(onClose: () -> Unit) {
           LiveCameraView(
             cameraSelector = CameraSelector.DEFAULT_BACK_CAMERA,
             isPaused = handled,
-            preferredSize = 1280,
+            preferredSize = 2048,
             modifier = Modifier.fillMaxSize(),
             onBitmap = { bitmap: Bitmap, imageProxy ->
               if (handled) {
@@ -150,29 +155,115 @@ fun MeetingScanScreen(onClose: () -> Unit) {
 
     is CheckInStage.Result ->
       Column(
-        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp),
+        Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = 20.dp).padding(bottom = 24.dp),
       ) {
         Spacer(Modifier.height(24.dp))
-        ScreenTitle(s.meeting.meetingTitle)
-        Spacer(Modifier.height(6.dp))
-        Text("Checked in as $name", style = MaterialTheme.typography.bodyLarge, color = CaptureColors.Ink)
-        Spacer(Modifier.height(20.dp))
-        Text("Assigned to you", style = MaterialTheme.typography.titleMedium, color = CaptureColors.Ink)
+        ScreenTitle(s.meeting.meetingTitle.ifBlank { "Meeting" })
         Spacer(Modifier.height(4.dp))
-        s.assigned.forEach { item ->
-          RailRow(railColor = priorityColor(item.priority)) {
-            PriorityTag(item.priority)
-            Spacer(Modifier.height(6.dp))
-            Text(item.task, style = MaterialTheme.typography.bodyLarge, color = CaptureColors.Ink)
-            if (!item.deadline.isNullOrBlank()) {
-              Spacer(Modifier.height(2.dp))
-              Text("Due ${item.deadline}", style = MaterialTheme.typography.bodyMedium, color = CaptureColors.Neutral)
+        Text("Checked in as $name", style = MaterialTheme.typography.bodyLarge, color = CaptureColors.Ink)
+        if (s.meeting.hostName.isNotBlank() || s.meeting.recordedAt > 0L) {
+          Spacer(Modifier.height(2.dp))
+          Text(
+            buildString {
+              if (s.meeting.hostName.isNotBlank()) append("Host ${s.meeting.hostName}")
+              if (s.meeting.recordedAt > 0L) {
+                if (s.meeting.hostName.isNotBlank()) append("  ·  ")
+                append(SimpleDateFormat("EEE d MMM h:mm a", Locale.getDefault()).format(Date(s.meeting.recordedAt)))
+              }
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = CaptureColors.Neutral,
+          )
+        }
+        Spacer(Modifier.height(6.dp))
+        Meta("Team ${s.meeting.teamCode.ifBlank { "—" }} · ${s.meeting.actionItems.size} action items${if (s.meeting.decisions.isEmpty()) "" else " · ${s.meeting.decisions.size} decisions"}")
+
+        // ---- What this meeting is about ----
+        if (s.meeting.summary.isNotBlank()) {
+          Spacer(Modifier.height(20.dp))
+          Text("What this meeting was about", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = CaptureColors.Navy)
+          Spacer(Modifier.height(6.dp))
+          Text(s.meeting.summary, style = MaterialTheme.typography.bodyMedium, color = CaptureColors.Ink)
+        }
+
+        if (s.meeting.decisions.isNotEmpty()) {
+          Spacer(Modifier.height(20.dp))
+          Text("Decisions taken", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = CaptureColors.Navy)
+          Spacer(Modifier.height(6.dp))
+          s.meeting.decisions.forEachIndexed { index, d ->
+            Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.Top) {
+              Text("${index + 1}.  ", style = MaterialTheme.typography.bodyMedium, color = CaptureColors.Navy)
+              Text(d, style = MaterialTheme.typography.bodyMedium, color = CaptureColors.Ink)
             }
           }
-          Hairline()
         }
-        Spacer(Modifier.height(12.dp))
-        Meta("These are now on your Tasks page under “QR”.")
+
+        // ---- Your tasks (only when the name matches) ----
+        if (s.assigned.isNotEmpty()) {
+          Spacer(Modifier.height(20.dp))
+          Text("Your tasks", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = CaptureColors.Low)
+          Spacer(Modifier.height(4.dp))
+          Text("Assigned to you in this meeting:", style = MaterialTheme.typography.bodySmall, color = CaptureColors.Neutral)
+          Spacer(Modifier.height(6.dp))
+          s.assigned.forEachIndexed { index, item ->
+            RailRow(railColor = item.priority.toColor()) {
+              Row(verticalAlignment = Alignment.Top) {
+                Text("${index + 1}.  ", style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold), color = CaptureColors.Low)
+                Column(Modifier.weight(1f)) {
+                  Text(item.task, style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Bold), color = CaptureColors.Ink)
+                  Spacer(Modifier.height(2.dp))
+                  Text(
+                    buildString {
+                      append("Priority: ${item.priority.scanTitleCase()}")
+                      if (!item.deadline.isNullOrBlank()) append("  ·  Due: ${item.deadline}")
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = CaptureColors.Neutral,
+                  )
+                }
+              }
+            }
+            Hairline()
+          }
+          Spacer(Modifier.height(10.dp))
+          Text(
+            "These have been added to your Tasks page under “QR”.",
+            style = MaterialTheme.typography.bodySmall,
+            color = CaptureColors.Neutral,
+          )
+        }
+
+        // ---- Full action list for everyone ----
+        Spacer(Modifier.height(20.dp))
+        Text("Everyone's action items", style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold), color = CaptureColors.Navy)
+        Spacer(Modifier.height(4.dp))
+        Text("All tasks from this meeting, whoever owns them:", style = MaterialTheme.typography.bodySmall, color = CaptureColors.Neutral)
+        Spacer(Modifier.height(6.dp))
+        if (s.meeting.actionItems.isEmpty()) {
+          Text("No action items were captured in this meeting.", style = MaterialTheme.typography.bodyMedium, color = CaptureColors.Neutral)
+        } else {
+          s.meeting.actionItems.forEachIndexed { index, item ->
+            RailRow(railColor = item.priority.toColor()) {
+              Row(verticalAlignment = Alignment.Top) {
+                Text("${index + 1}.  ", style = MaterialTheme.typography.bodyMedium, color = CaptureColors.Navy)
+                Column(Modifier.weight(1f)) {
+                  Text(item.task, style = MaterialTheme.typography.bodyMedium, color = CaptureColors.Ink)
+                  Spacer(Modifier.height(2.dp))
+                  Text(
+                    buildString {
+                      append(item.owner.ifBlank { "Unassigned" })
+                      append("  ·  ${item.priority.scanTitleCase()}")
+                      if (!item.deadline.isNullOrBlank()) append("  ·  Due ${item.deadline}")
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = CaptureColors.Neutral,
+                  )
+                }
+              }
+            }
+            Hairline()
+          }
+        }
         Spacer(Modifier.height(24.dp))
         PrimaryButton("Done", onClick = onClose)
         Spacer(Modifier.height(16.dp))
@@ -208,22 +299,19 @@ private fun checkIn(context: android.content.Context, raw: String, name: String)
       return CheckInStage.Error("That QR is not a CaptureOS meeting code.")
     }
   val mine = meeting.actionItems.filter { it.owner.trim().equals(name.trim(), ignoreCase = true) }
-  if (mine.isEmpty()) {
-    return CheckInStage.Error("Name not present")
-  }
   val meetingId = UUID.randomUUID().toString()
-  CaptureDb.addMeeting(
-    context,
+  val archive =
     MeetingArchive(
       id = meetingId,
       teamCode = meeting.teamCode,
       meetingTitle = meeting.meetingTitle,
+      hostName = meeting.hostName,
       transcript = "",
       summary = meeting.summary,
       decisions = meeting.decisions,
       actionItems = meeting.actionItems,
-    ),
-  )
+    )
+  CaptureDb.addMeeting(context, archive)
   mine.forEach { item ->
     CaptureDb.addQrTask(
       context,
@@ -238,5 +326,15 @@ private fun checkIn(context: android.content.Context, raw: String, name: String)
     )
   }
   CaptureDb.log(context, "check-in", "$name checked in to ${meeting.meetingTitle} · ${mine.size} tasks")
-  return CheckInStage.Result(meeting, mine)
+  return CheckInStage.Result(meeting, archive, mine)
 }
+
+private fun String.toColor(): Color =
+  when (trim().lowercase()) {
+    "high" -> CaptureColors.High
+    "medium" -> CaptureColors.Medium
+    "low" -> CaptureColors.Low
+    else -> CaptureColors.Neutral
+  }
+
+private fun String.scanTitleCase(): String = replaceFirstChar { it.uppercase() }

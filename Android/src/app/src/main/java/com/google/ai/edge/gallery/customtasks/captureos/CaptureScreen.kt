@@ -8,13 +8,16 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.EditNote
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.NavigationBarItem
@@ -31,6 +34,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
@@ -43,7 +47,7 @@ private data class NavTab(val key: String, val label: String, val icon: ImageVec
 
 private val TABS =
   listOf(
-    NavTab("capture", "Capture", Icons.Filled.Mic),
+    NavTab("home", "Capture", Icons.Filled.Mic),
     NavTab("meetings", "Meetings", Icons.Filled.Groups),
     NavTab("tasks", "Tasks", Icons.Filled.EditNote),
     NavTab("history", "History", Icons.Filled.History),
@@ -60,6 +64,9 @@ fun CaptureScreen(modelManagerViewModel: ModelManagerViewModel, bottomPadding: D
   val model: Model = uiState.selectedModel
   var tab by remember { mutableIntStateOf(0) }
   var showScan by remember { mutableStateOf(false) }
+  var showDicto by remember { mutableStateOf(false) }
+  var showTaskScan by remember { mutableStateOf(false) }
+  var selectedMeeting by remember { mutableStateOf<MeetingArchive?>(null) }
   val profile = remember { CaptureStore.load(context) }
 
   LaunchedEffect(Unit) {
@@ -73,6 +80,25 @@ fun CaptureScreen(modelManagerViewModel: ModelManagerViewModel, bottomPadding: D
     Box(Modifier.fillMaxSize().background(CaptureColors.Paper)) {
       if (showScan) {
         MeetingScanScreen(onClose = { showScan = false })
+      } else if (showDicto) {
+        Box(Modifier.fillMaxSize()) {
+          DictoCaptureScreen(model, 0.dp)
+          IconButton(
+            onClick = { showDicto = false },
+            modifier =
+              Modifier
+                .padding(12.dp)
+                .align(Alignment.TopStart)
+                .clip(CircleShape)
+                .background(CaptureColors.Paper.copy(alpha = 0.9f)),
+          ) {
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Close dictation", tint = CaptureColors.Navy)
+          }
+        }
+      } else if (showTaskScan) {
+        TaskScanScreen(onClose = { showTaskScan = false })
+      } else if (selectedMeeting != null) {
+        MeetingDetailScreen(meeting = selectedMeeting!!, onBack = { selectedMeeting = null })
       } else {
         val safeIndex = tab.coerceIn(0, TABS.lastIndex)
         val initStatus by model.initStatusFlow.collectAsState()
@@ -104,9 +130,17 @@ fun CaptureScreen(modelManagerViewModel: ModelManagerViewModel, bottomPadding: D
         ) { inner ->
           Box(Modifier.fillMaxSize().padding(inner)) {
             when (TABS[safeIndex].key) {
-              "capture" -> if (modelReady) DictoCaptureScreen(model, 0.dp) else LoadingModel()
-              "meetings" -> if (modelReady) AdminScreen(profile, model, 0.dp, onScan = { showScan = true }) else LoadingModel()
-              "tasks" -> TasksScreen(0.dp)
+              "home" ->
+                LandingScreen(
+                  profile = profile,
+                  model = model,
+                  onOpenMeeting = { tab = 1 },
+                  onOpenDictation = { showDicto = true },
+                )
+              "meetings" ->
+                if (modelReady) MeetingsScreen(model = model, profile = profile, bottomPadding = 0.dp, onScan = { showScan = true }, onOpenMeeting = { m -> selectedMeeting = m })
+                else LoadingModel()
+              "tasks" -> TasksScreen(0.dp, onScanTask = { showTaskScan = true })
               else -> HistoryScreen(0.dp)
             }
           }

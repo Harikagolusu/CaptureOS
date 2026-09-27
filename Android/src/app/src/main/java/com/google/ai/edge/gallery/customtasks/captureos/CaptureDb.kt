@@ -202,6 +202,20 @@ object CaptureDb {
     else row.entryId?.let { setTaskDone(context, it, row.task.id, done) }
   }
 
+  /** Reassigns a dictation task to a typed name (from the landing-page assignment flow). */
+  fun setTaskOwner(context: Context, entryId: String, taskId: String, owner: String) {
+    load(context)
+    state =
+      state.copy(
+        dicto =
+          state.dicto.map { e ->
+            if (e.id == entryId) e.copy(tasks = e.tasks.map { t -> if (t.id == taskId) t.copy(owner = owner) else t })
+            else e
+          }
+      )
+    persist(context)
+  }
+
   // ---- events ------------------------------------------------------------------------------
 
   fun addEvent(context: Context, event: CalendarEvent) {

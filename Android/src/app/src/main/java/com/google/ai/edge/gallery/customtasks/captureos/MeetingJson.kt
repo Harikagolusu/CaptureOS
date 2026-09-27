@@ -4,11 +4,13 @@ import com.google.gson.Gson
 import com.google.gson.annotations.SerializedName
 
 data class MeetingRecord(
-  @SerializedName("team_code") val teamCode: String,
-  @SerializedName("meeting_title") val meetingTitle: String,
-  val summary: String,
-  val decisions: List<String>,
-  @SerializedName("action_items") val actionItems: List<ActionItem>,
+  @SerializedName("team_code") val teamCode: String = "",
+  @SerializedName("meeting_title") val meetingTitle: String = "",
+  @SerializedName("host_name") val hostName: String = "",
+  @SerializedName("recorded_at") val recordedAt: Long = 0L,
+  val summary: String = "",
+  val decisions: List<String> = emptyList(),
+  @SerializedName("action_items") val actionItems: List<ActionItem> = emptyList(),
 )
 
 data class ActionItem(

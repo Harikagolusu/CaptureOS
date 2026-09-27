@@ -331,7 +331,7 @@ private fun rowCategories(row: TaskRow): List<String> =
 
 /** Tasks page: every task from QR check-ins and dictation, filterable by source and dictation type. */
 @Composable
-fun TasksScreen(bottomPadding: Dp) {
+fun TasksScreen(bottomPadding: Dp, onScanTask: () -> Unit = {}) {
   val context = LocalContext.current
   CaptureDb.load(context)
   var type by remember { mutableStateOf("all") }
@@ -349,6 +349,9 @@ fun TasksScreen(bottomPadding: Dp) {
     Spacer(Modifier.height(24.dp))
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
       Text("Tasks", style = MaterialTheme.typography.headlineMedium, color = CaptureColors.Ink, modifier = Modifier.weight(1f))
+      TextButton(onClick = onScanTask) {
+        Text("Scan task", style = MaterialTheme.typography.labelLarge, color = CaptureColors.Navy)
+      }
       Meta("${pending.size} pending")
     }
     Spacer(Modifier.height(12.dp))
